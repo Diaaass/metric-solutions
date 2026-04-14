@@ -65,9 +65,7 @@ export default function Footer() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-secondary-400">
             <p>&copy; {currentYear} Metric Solution. Все права защищены.</p>
             <div className="flex gap-6">
-              <Link href="/privacy" className="hover:text-primary-400 transition-colors">
-                Политика конфиденциальности
-              </Link>
+              <span>Metric Solution © {currentYear}</span>
             </div>
           </div>
         </div>

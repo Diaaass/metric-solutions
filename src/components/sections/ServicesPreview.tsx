@@ -33,9 +33,10 @@ export default function ServicesPreview() {
   ];
 
   return (
-    <section className="section-padding bg-secondary-50">
-      <Container>
-        <div className="text-center mb-12">
+    <section className="section-padding bg-secondary-50 relative overflow-hidden">
+      <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
+      <Container className="relative z-10">
+        <div className="text-center mb-12 animate-fade-in">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Наши услуги</h2>
           <p className="text-xl text-secondary-600 max-w-2xl mx-auto">
             Предоставляем полный спектр услуг по геометаллургическому сопровождению горно-обогатительных предприятий
@@ -46,7 +47,7 @@ export default function ServicesPreview() {
           {services.map((service, index) => {
             const Icon = iconMap[service.icon as keyof typeof iconMap];
             return (
-              <Card key={index} className="hover:scale-105 transition-transform duration-300">
+              <Card key={index} className={`animate-fade-in-up delay-${(index + 1) * 100}`}>
                 <div className="flex flex-col h-full">
                   <div className="mb-4">
                     <div className="w-14 h-14 bg-primary-100 rounded-lg flex items-center justify-center">
@@ -55,7 +56,7 @@ export default function ServicesPreview() {
                   </div>
                   <h3 className="text-xl font-bold mb-3">{service.title}</h3>
                   <p className="text-secondary-600 mb-6 flex-grow">{service.description}</p>
-                  <Link 
+                  <Link
                     href={service.href}
                     className="text-primary-600 font-semibold inline-flex items-center gap-2 hover:gap-3 transition-all"
                   >
@@ -70,4 +71,5 @@ export default function ServicesPreview() {
       </Container>
     </section>
   );
+
 }

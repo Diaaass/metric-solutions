@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import Container from '@/components/ui/Container';
 import Card from '@/components/ui/Card';
 import { projects } from '@/data/projects';
@@ -7,20 +8,21 @@ import { Calendar, Building2, Tag } from 'lucide-react';
 export default function ProjectsPage() {
   return (
     <div className="bg-white">
-      <section className="bg-gradient-to-br from-secondary-900 to-primary-900 text-white py-20">
+      <section className="bg-gradient-to-br from-secondary-900 to-primary-700 text-white py-20">
         <Container>
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">Наши проекты</h1>
-          <p className="text-xl text-secondary-200 max-w-3xl">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in-up">Наши проекты</h1>
+          <p className="text-xl text-secondary-200 max-w-3xl animate-fade-in-up delay-200">
             Успешно реализованные проекты для ведущих горно-обогатительных предприятий
           </p>
         </Container>
       </section>
 
-      <section className="section-padding">
-        <Container>
+      <section className="section-padding relative overflow-hidden">
+        <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
+        <Container className="relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {projects.map((project) => (
-              <Card key={project.id} className="hover:shadow-2xl transition-shadow duration-300">
+            {projects.map((project, i) => (
+              <Card key={project.id} className={`animate-fade-in-up delay-${(i + 1) * 100}`}>
                 <div className="mb-4">
                   <div className="flex items-center gap-2 text-sm text-secondary-500 mb-3">
                     <Tag className="h-4 w-4" />
@@ -35,7 +37,7 @@ export default function ProjectsPage() {
                     <span className="text-sm">{project.client}</span>
                   </div>
                 </div>
-                
+
                 <p className="text-secondary-700 mb-6">{project.description}</p>
 
                 <div className="border-t border-secondary-200 pt-6">
@@ -53,17 +55,14 @@ export default function ProjectsPage() {
             ))}
           </div>
 
-          <div className="mt-16 bg-primary-50 p-8 md:p-12 rounded-xl text-center">
+          <div className="mt-16 bg-primary-50 p-8 md:p-12 rounded-xl text-center animate-fade-in delay-300">
             <h2 className="text-3xl font-bold mb-4">Хотите такие же результаты?</h2>
             <p className="text-lg text-secondary-700 mb-8 max-w-2xl mx-auto">
               Обсудим ваш проект и найдем оптимальное решение для повышения эффективности производства
             </p>
-            <a 
-              href="/contacts" 
-              className="btn-primary inline-block"
-            >
+            <Link href="/contacts" className="btn-primary inline-block">
               Связаться с нами
-            </a>
+            </Link>
           </div>
         </Container>
       </section>

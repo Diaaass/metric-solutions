@@ -14,7 +14,6 @@ export default function Header() {
     { name: 'Услуги', href: '/services' },
     { name: 'Проекты', href: '/projects' },
     { name: 'Команда', href: '/team' },
-    { name: 'Блог', href: '/blog' },
     { name: 'Контакты', href: '/contacts' },
   ];
 
@@ -44,6 +43,8 @@ export default function Header() {
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="md:hidden p-2 rounded-lg hover:bg-secondary-100"
+            aria-label={isMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            aria-expanded={isMenuOpen}
           >
             {isMenuOpen ? (
               <X className="h-6 w-6 text-secondary-700" />

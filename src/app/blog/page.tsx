@@ -33,35 +33,33 @@ export default function BlogPage() {
 
   return (
     <div className="bg-white">
-      <section className="bg-gradient-to-br from-secondary-900 to-primary-900 text-white py-20">
+      <section className="bg-gradient-to-br from-secondary-900 to-primary-700 text-white py-20">
         <Container>
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">Блог и новости</h1>
-          <p className="text-xl text-secondary-200 max-w-3xl">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in-up">Блог и новости</h1>
+          <p className="text-xl text-secondary-200 max-w-3xl animate-fade-in-up delay-200">
             Экспертные статьи, аналитика и новости из мира геометаллургии и обогащения руд
           </p>
         </Container>
       </section>
 
-      <section className="section-padding">
-        <Container>
+      <section className="section-padding relative overflow-hidden">
+        <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
+        <Container className="relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {posts.map((post) => (
-              <Card key={post.id} className="flex flex-col hover:shadow-2xl transition-shadow duration-300">
+            {posts.map((post, i) => (
+              <Card key={post.id} className={`flex flex-col animate-fade-in-up delay-${(i + 1) * 100}`}>
                 <div className="mb-4">
                   <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
                     <Tag className="h-3 w-3" />
                     {post.category}
                   </span>
                 </div>
-
                 <h2 className="text-xl font-bold mb-3 line-clamp-2 hover:text-primary-600 transition-colors cursor-pointer">
                   {post.title}
                 </h2>
-
                 <p className="text-secondary-600 mb-6 flex-grow line-clamp-3">
                   {post.excerpt}
                 </p>
-
                 <div className="flex items-center justify-between text-sm text-secondary-500 pt-4 border-t border-secondary-200">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4" />
@@ -76,7 +74,7 @@ export default function BlogPage() {
             ))}
           </div>
 
-          <div className="mt-16 text-center">
+          <div className="mt-16 text-center animate-fade-in delay-400">
             <p className="text-secondary-500 mb-4">Скоро здесь появятся новые статьи</p>
             <p className="text-secondary-400 text-sm">Подпишитесь на нашу рассылку, чтобы не пропустить обновления</p>
           </div>

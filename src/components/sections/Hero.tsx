@@ -5,17 +5,17 @@ import { ChevronRight } from 'lucide-react';
 
 export default function Hero() {
   return (
-    <section className="relative bg-gradient-to-br from-secondary-900 via-secondary-800 to-primary-900 text-white">
+    <section className="relative bg-gradient-to-br from-secondary-900 via-secondary-800 to-primary-900 text-white animate-gradient overflow-hidden">
       <Container>
         <div className="py-20 md:py-32">
           <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight animate-fade-in-up">
               Профессиональные решения в области геометаллургии
             </h1>
-            <p className="text-xl md:text-2xl text-secondary-200 mb-8">
+            <p className="text-xl md:text-2xl text-secondary-200 mb-8 animate-fade-in-up delay-200">
               Повышаем эффективность обогащения руд через комплексный подход к геологии и металлургии
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 animate-fade-in-up delay-300">
               <Button href="/services" variant="primary" className="inline-flex items-center gap-2">
                 Наши услуги
                 <ChevronRight className="h-5 w-5" />
@@ -27,10 +27,10 @@ export default function Hero() {
           </div>
         </div>
       </Container>
-      
-      <div className="absolute top-0 right-0 w-1/2 h-full opacity-10">
-        <div className="absolute top-20 right-20 w-72 h-72 bg-primary-400 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 right-40 w-96 h-96 bg-primary-600 rounded-full blur-3xl"></div>
+
+      <div className="absolute top-0 right-0 w-1/2 h-full opacity-10 pointer-events-none">
+        <div className="absolute top-20 right-20 w-72 h-72 bg-primary-400 rounded-full blur-3xl animate-pulse-subtle"></div>
+        <div className="absolute bottom-20 right-40 w-96 h-96 bg-primary-600 rounded-full blur-3xl animate-pulse-subtle delay-100"></div>
       </div>
     </section>
   );

@@ -15,10 +15,10 @@ const iconMap = {
 export default function ServicesPage() {
   return (
     <div className="bg-white">
-      <section className="bg-gradient-to-br from-secondary-900 to-primary-900 text-white py-20">
+      <section className="bg-gradient-to-br from-secondary-900 to-primary-700 text-white py-20">
         <Container>
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">Наши услуги</h1>
-          <p className="text-xl text-secondary-200 max-w-3xl">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in-up">Наши услуги</h1>
+          <p className="text-xl text-secondary-200 max-w-3xl animate-fade-in-up delay-200">
             Полный спектр геометаллургических услуг для оптимизации процессов обогащения и переработки руд
           </p>
         </Container>
@@ -27,10 +27,10 @@ export default function ServicesPage() {
       <section className="section-padding">
         <Container>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-            {services.map((service) => {
+            {services.map((service, i) => {
               const Icon = iconMap[service.icon as keyof typeof iconMap];
               return (
-                <Card key={service.id} className="hover:scale-105 transition-transform duration-300">
+                <Card key={service.id} className={`animate-fade-in-up delay-${(i + 1) * 100}`}>
                   <div className="mb-6">
                     <div className="w-16 h-16 bg-primary-100 rounded-xl flex items-center justify-center mb-4">
                       <Icon className="h-8 w-8 text-primary-600" />
@@ -46,7 +46,7 @@ export default function ServicesPage() {
             })}
           </div>
 
-          <div className="bg-primary-50 p-8 md:p-12 rounded-xl text-center">
+          <div className="bg-primary-50 p-8 md:p-12 rounded-xl text-center animate-fade-in delay-300">
             <h2 className="text-3xl font-bold mb-4">Не нашли нужную услугу?</h2>
             <p className="text-lg text-secondary-700 mb-8 max-w-2xl mx-auto">
               Мы предлагаем индивидуальные решения для каждого клиента. Свяжитесь с нами для обсуждения вашего проекта.

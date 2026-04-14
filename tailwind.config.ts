@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-plex-sans)', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-plex-serif)', 'Georgia', 'serif'],
+      },
       colors: {
         primary: {
           50: '#f0f9ff',

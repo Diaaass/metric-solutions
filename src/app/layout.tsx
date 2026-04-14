@@ -1,10 +1,22 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { IBM_Plex_Sans, IBM_Plex_Serif } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 
-const inter = Inter({ subsets: ['latin', 'cyrillic'] });
+const plexSans = IBM_Plex_Sans({
+  weight: ['400', '500', '600', '700'],
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-plex-sans',
+  display: 'swap',
+});
+
+const plexSerif = IBM_Plex_Serif({
+  weight: ['600', '700'],
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-plex-serif',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Metric Solution - Геометаллургия и обогащение руд',
@@ -19,7 +31,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
-      <body className={inter.className}>
+      <body className={`${plexSans.variable} ${plexSerif.variable} font-sans`}>
         <Header />
         <main className="min-h-screen">
           {children}

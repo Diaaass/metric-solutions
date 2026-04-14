@@ -4,27 +4,37 @@
 
 @layer base {
   body {
-    @apply bg-white text-secondary-900;
+    @apply bg-white text-secondary-900 font-sans;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
-    @apply font-bold text-secondary-900;
+    @apply font-serif font-bold;
+    letter-spacing: -0.02em;
   }
-  
+
   h1 {
     @apply text-4xl md:text-5xl lg:text-6xl;
+    line-height: 1.1;
   }
-  
+
   h2 {
-    @apply text-3xl md:text-4xl lg:text-5xl;
+    @apply text-3xl md:text-4xl;
+    line-height: 1.2;
   }
-  
+
   h3 {
     @apply text-2xl md:text-3xl;
+    line-height: 1.3;
   }
-  
+
   h4 {
     @apply text-xl md:text-2xl;
+    line-height: 1.4;
+  }
+
+  p {
+    line-height: 1.7;
+    letter-spacing: 0.01em;
   }
 }
 
@@ -32,33 +42,125 @@
   .container-custom {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
-  
+
   .btn-primary {
-    @apply bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold 
-           hover:bg-primary-700 transition-colors duration-200;
+    @apply bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold
+           hover:bg-primary-700 transition-all duration-200
+           hover:shadow-lg hover:scale-[1.02];
   }
-  
+
   .btn-secondary {
-    @apply bg-secondary-100 text-secondary-900 px-6 py-3 rounded-lg font-semibold 
+    @apply bg-secondary-100 text-secondary-900 px-6 py-3 rounded-lg font-semibold
            hover:bg-secondary-200 transition-colors duration-200;
   }
-  
+
   .btn-outline {
-    @apply border-2 border-primary-600 text-primary-600 px-6 py-3 rounded-lg font-semibold 
+    @apply border-2 border-primary-600 text-primary-600 px-6 py-3 rounded-lg font-semibold
            hover:bg-primary-600 hover:text-white transition-all duration-200;
   }
-  
+
   .card {
-    @apply bg-white rounded-xl shadow-lg p-6 border border-secondary-100 
-           hover:shadow-xl transition-shadow duration-300;
+    @apply bg-white rounded-xl shadow-lg p-6 border border-secondary-100
+           transition-all duration-300
+           hover:shadow-2xl hover:-translate-y-2;
   }
-  
+
   .input-field {
-    @apply w-full px-4 py-3 border border-secondary-300 rounded-lg 
-           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-4 py-3 border border-secondary-300 rounded-lg
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+           transition-all duration-200;
   }
-  
+
   .section-padding {
     @apply py-16 md:py-24;
   }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.9;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+
+/* ─── Geometric backgrounds ─────────────────────────────── */
+
+/* Точечная сетка — лаборатория, данные, анализ */
+.dot-grid-bg {
+  background-image: radial-gradient(circle, #64748b 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+  opacity: 0.15;
+}
+
+/* Тонкая сетка — технические чертежи */
+.grid-bg {
+  background-image:
+    linear-gradient(#cbd5e1 1px, transparent 1px),
+    linear-gradient(90deg, #cbd5e1 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.6;
+}
+
+/* Белые точки на тёмном фоне */
+.dot-grid-bg-white {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.4) 1.5px, transparent 1.5px);
+  background-size: 28px 28px;
+  opacity: 0.6;
 }
