@@ -7,7 +7,6 @@ import { Calendar, Building2, Tag } from 'lucide-react';
 export default function ProjectsPage() {
   return (
     <div className="bg-white">
-      {/* Hero */}
       <section className="bg-gradient-to-br from-secondary-900 to-primary-900 text-white py-20">
         <Container>
           <h1 className="text-4xl md:text-5xl font-bold mb-6">Наши проекты</h1>
@@ -17,7 +16,6 @@ export default function ProjectsPage() {
         </Container>
       </section>
 
-      {/* Projects Grid */}
       <section className="section-padding">
         <Container>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -55,7 +53,6 @@ export default function ProjectsPage() {
             ))}
           </div>
 
-          {/* CTA */}
           <div className="mt-16 bg-primary-50 p-8 md:p-12 rounded-xl text-center">
             <h2 className="text-3xl font-bold mb-4">Хотите такие же результаты?</h2>
             <p className="text-lg text-secondary-700 mb-8 max-w-2xl mx-auto">

@@ -15,7 +15,6 @@ const iconMap = {
 export default function ServicesPage() {
   return (
     <div className="bg-white">
-      {/* Hero Section */}
       <section className="bg-gradient-to-br from-secondary-900 to-primary-900 text-white py-20">
         <Container>
           <h1 className="text-4xl md:text-5xl font-bold mb-6">Наши услуги</h1>
@@ -25,7 +24,6 @@ export default function ServicesPage() {
         </Container>
       </section>
 
-      {/* Services Grid */}
       <section className="section-padding">
         <Container>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
@@ -48,7 +46,6 @@ export default function ServicesPage() {
             })}
           </div>
 
-          {/* CTA Section */}
           <div className="bg-primary-50 p-8 md:p-12 rounded-xl text-center">
             <h2 className="text-3xl font-bold mb-4">Не нашли нужную услугу?</h2>
             <p className="text-lg text-secondary-700 mb-8 max-w-2xl mx-auto">

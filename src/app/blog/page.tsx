@@ -4,7 +4,6 @@ import Card from '@/components/ui/Card';
 import { Calendar, User, Tag } from 'lucide-react';
 
 export default function BlogPage() {
-  // Mock blog posts
   const posts = [
     {
       id: '1',
@@ -34,7 +33,6 @@ export default function BlogPage() {
 
   return (
     <div className="bg-white">
-      {/* Hero */}
       <section className="bg-gradient-to-br from-secondary-900 to-primary-900 text-white py-20">
         <Container>
           <h1 className="text-4xl md:text-5xl font-bold mb-6">Блог и новости</h1>
@@ -44,13 +42,11 @@ export default function BlogPage() {
         </Container>
       </section>
 
-      {/* Blog Posts */}
       <section className="section-padding">
         <Container>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {posts.map((post) => (
               <Card key={post.id} className="flex flex-col hover:shadow-2xl transition-shadow duration-300">
-                {/* Category badge */}
                 <div className="mb-4">
                   <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
                     <Tag className="h-3 w-3" />
@@ -58,17 +54,14 @@ export default function BlogPage() {
                   </span>
                 </div>
 
-                {/* Title */}
                 <h2 className="text-xl font-bold mb-3 line-clamp-2 hover:text-primary-600 transition-colors cursor-pointer">
                   {post.title}
                 </h2>
 
-                {/* Excerpt */}
                 <p className="text-secondary-600 mb-6 flex-grow line-clamp-3">
                   {post.excerpt}
                 </p>
 
-                {/* Meta */}
                 <div className="flex items-center justify-between text-sm text-secondary-500 pt-4 border-t border-secondary-200">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4" />
@@ -83,7 +76,6 @@ export default function BlogPage() {
             ))}
           </div>
 
-          {/* No More Posts Message */}
           <div className="mt-16 text-center">
             <p className="text-secondary-500 mb-4">Скоро здесь появятся новые статьи</p>
             <p className="text-secondary-400 text-sm">Подпишитесь на нашу рассылку, чтобы не пропустить обновления</p>

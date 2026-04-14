@@ -10,7 +10,6 @@ export default function Footer() {
     <footer className="bg-secondary-900 text-white">
       <Container>
         <div className="py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Company Info */}
           <div className="md:col-span-1">
             <h3 className="text-xl font-bold mb-4 text-white">Metric Solution</h3>
             <p className="text-secondary-300 text-sm">
@@ -18,7 +17,6 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* Quick Links */}
           <div>
             <h4 className="font-semibold mb-4 text-white">Навигация</h4>
             <ul className="space-y-2 text-sm">
@@ -29,7 +27,6 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Services */}
           <div>
             <h4 className="font-semibold mb-4 text-white">Услуги</h4>
             <ul className="space-y-2 text-sm">
@@ -39,7 +36,6 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contact Info */}
           <div>
             <h4 className="font-semibold mb-4 text-white">Контакты</h4>
             <ul className="space-y-3 text-sm">
@@ -65,7 +61,6 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom Bar */}
         <div className="border-t border-secondary-800 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-secondary-400">
             <p>&copy; {currentYear} Metric Solution. Все права защищены.</p>

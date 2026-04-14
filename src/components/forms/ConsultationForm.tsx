@@ -27,13 +27,7 @@ export default function ConsultationForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Здесь будет логика отправки формы
-    console.log('Form submitted:', formData);
-    
-    // Показываем сообщение об успехе
     setIsSubmitted(true);
-    
-    // Сбрасываем форму
     setFormData({
       name: '',
       email: '',
@@ -42,7 +36,6 @@ export default function ConsultationForm() {
       message: ''
     });
 
-    // Скрываем сообщение через 5 секунд
     setTimeout(() => {
       setIsSubmitted(false);
     }, 5000);

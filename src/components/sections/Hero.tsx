@@ -28,7 +28,6 @@ export default function Hero() {
         </div>
       </Container>
       
-      {/* Decorative elements */}
       <div className="absolute top-0 right-0 w-1/2 h-full opacity-10">
         <div className="absolute top-20 right-20 w-72 h-72 bg-primary-400 rounded-full blur-3xl"></div>
         <div className="absolute bottom-20 right-40 w-96 h-96 bg-primary-600 rounded-full blur-3xl"></div>

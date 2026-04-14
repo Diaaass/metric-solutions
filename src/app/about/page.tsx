@@ -5,7 +5,6 @@ import { Target, Users, Award, TrendingUp } from 'lucide-react';
 export default function AboutPage() {
   return (
     <div className="bg-white">
-      {/* Hero Section */}
       <section className="bg-gradient-to-br from-secondary-900 to-primary-900 text-white py-20">
         <Container>
           <h1 className="text-4xl md:text-5xl font-bold mb-6">О компании</h1>
@@ -15,7 +14,6 @@ export default function AboutPage() {
         </Container>
       </section>
 
-      {/* Main Content */}
       <section className="section-padding">
         <Container>
           <div className="max-w-4xl mx-auto">
@@ -31,7 +29,6 @@ export default function AboutPage() {
               </p>
             </div>
 
-            {/* Values */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
               <div className="bg-secondary-50 p-6 rounded-xl">
                 <Target className="h-10 w-10 text-primary-600 mb-4" />
@@ -69,7 +66,6 @@ export default function AboutPage() {
               </div>
             </div>
 
-            {/* Advantages */}
             <div className="bg-primary-50 p-8 rounded-xl">
               <h2 className="text-2xl font-bold mb-6">Почему выбирают нас</h2>
               <ul className="space-y-4">
