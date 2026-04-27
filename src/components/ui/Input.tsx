@@ -1,6 +1,7 @@
 import React from 'react';
 
 interface InputProps {
+  id?: string;
   type?: string;
   name: string;
   placeholder?: string;
@@ -10,17 +11,19 @@ interface InputProps {
   className?: string;
 }
 
-export default function Input({ 
-  type = 'text', 
-  name, 
-  placeholder, 
-  value, 
-  onChange, 
+export default function Input({
+  id,
+  type = 'text',
+  name,
+  placeholder,
+  value,
+  onChange,
   required = false,
-  className = '' 
+  className = ''
 }: InputProps) {
   return (
     <input
+      id={id}
       type={type}
       name={name}
       placeholder={placeholder}
