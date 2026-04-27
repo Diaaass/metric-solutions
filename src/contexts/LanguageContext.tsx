@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { translations } from '@/i18n';
 import type { Lang, Translation } from '@/i18n';
 
@@ -13,18 +13,16 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [langCode, setLangCode] = useState<Lang>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('lang') as Lang) ?? 'ru';
-    }
-    return 'ru';
-  });
+  const [langCode, setLangCode] = useState<Lang>('ru');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('lang') as Lang | null;
+    if (stored === 'kz') setLangCode('kz');
+  }, []);
 
   const setLang = (l: Lang) => {
     setLangCode(l);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('lang', l);
-    }
+    localStorage.setItem('lang', l);
   };
 
   return (
