@@ -1,10 +1,14 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { Mail, Phone, MapPin } from 'lucide-react';
 import Container from '@/components/ui/Container';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { lang } = useLanguage();
 
   return (
     <footer className="bg-secondary-900 text-white">
@@ -13,31 +17,35 @@ export default function Footer() {
           <div className="md:col-span-1">
             <h3 className="text-xl font-bold mb-4 text-white">Metric Solution</h3>
             <p className="text-secondary-300 text-sm">
-              Профессиональные решения в области геометаллургии и обогащения полезных ископаемых
+              {lang.footer.description}
             </p>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4 text-white">Навигация</h4>
+            <h4 className="font-semibold mb-4 text-white">{lang.footer.navTitle}</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/about" className="text-secondary-300 hover:text-primary-400 transition-colors">О компании</Link></li>
-              <li><Link href="/services" className="text-secondary-300 hover:text-primary-400 transition-colors">Услуги</Link></li>
-              <li><Link href="/projects" className="text-secondary-300 hover:text-primary-400 transition-colors">Проекты</Link></li>
-              <li><Link href="/team" className="text-secondary-300 hover:text-primary-400 transition-colors">Команда</Link></li>
+              <li><Link href="/about" className="text-secondary-300 hover:text-primary-400 transition-colors">{lang.nav.about}</Link></li>
+              <li><Link href="/services" className="text-secondary-300 hover:text-primary-400 transition-colors">{lang.nav.services}</Link></li>
+              <li><Link href="/projects" className="text-secondary-300 hover:text-primary-400 transition-colors">{lang.nav.projects}</Link></li>
+              <li><Link href="/team" className="text-secondary-300 hover:text-primary-400 transition-colors">{lang.nav.team}</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4 text-white">Услуги</h4>
+            <h4 className="font-semibold mb-4 text-white">{lang.footer.servicesTitle}</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/services/geometallurgy" className="text-secondary-300 hover:text-primary-400 transition-colors">Геометаллургия</Link></li>
-              <li><Link href="/services/metal-balance" className="text-secondary-300 hover:text-primary-400 transition-colors">Баланс металлов</Link></li>
-              <li><Link href="/services/ore-research" className="text-secondary-300 hover:text-primary-400 transition-colors">Исследование руды</Link></li>
+              {lang.servicesData.map((s) => (
+                <li key={s.slug}>
+                  <Link href={`/services/${s.slug}`} className="text-secondary-300 hover:text-primary-400 transition-colors">
+                    {s.title}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4 text-white">Контакты</h4>
+            <h4 className="font-semibold mb-4 text-white">{lang.footer.contactsTitle}</h4>
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2">
                 <Mail className="h-5 w-5 text-primary-400 flex-shrink-0 mt-0.5" />
@@ -54,7 +62,7 @@ export default function Footer() {
               <li className="flex items-start gap-2">
                 <MapPin className="h-5 w-5 text-primary-400 flex-shrink-0 mt-0.5" />
                 <span className="text-secondary-300">
-                  г. Астана, Казахстан
+                  {lang.contactsPage.addressText}
                 </span>
               </li>
             </ul>
@@ -63,10 +71,7 @@ export default function Footer() {
 
         <div className="border-t border-secondary-800 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-secondary-400">
-            <p>&copy; {currentYear} Metric Solution. Все права защищены.</p>
-            <div className="flex gap-6">
-              <span>Metric Solution © {currentYear}</span>
-            </div>
+            <p>&copy; {currentYear} Metric Solution. {lang.footer.rights}</p>
           </div>
         </div>
       </Container>

@@ -1,25 +1,29 @@
+'use client';
+
 import React from 'react';
-import Link from 'next/link';
 import Container from '@/components/ui/Container';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { services } from '@/data/services';
-import { Microscope, Scale, TestTube, ArrowRight } from 'lucide-react';
+import { Microscope, Scale, TestTube } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const iconMap = {
-  'Microscope': Microscope,
-  'Scale': Scale,
-  'TestTube': TestTube,
+  Microscope,
+  Scale,
+  TestTube,
 };
 
 export default function ServicesPage() {
+  const { lang } = useLanguage();
+  const t = lang.servicesPage;
+
   return (
     <div className="bg-white">
       <section className="bg-gradient-to-br from-secondary-900 to-primary-700 text-white py-20">
         <Container>
-          <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in-up">Наши услуги</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in-up">{t.heroTitle}</h1>
           <p className="text-xl text-secondary-200 max-w-3xl animate-fade-in-up delay-200">
-            Полный спектр геометаллургических услуг для оптимизации процессов обогащения и переработки руд
+            {t.heroSubtitle}
           </p>
         </Container>
       </section>
@@ -27,7 +31,7 @@ export default function ServicesPage() {
       <section className="section-padding">
         <Container>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-            {services.map((service, i) => {
+            {lang.servicesData.map((service, i) => {
               const Icon = iconMap[service.icon as keyof typeof iconMap];
               return (
                 <Card key={service.id} className={`animate-fade-in-up delay-${(i + 1) * 100}`}>
@@ -39,7 +43,7 @@ export default function ServicesPage() {
                     <p className="text-secondary-600 mb-6">{service.description}</p>
                   </div>
                   <Button href={`/services/${service.slug}`} variant="primary" className="w-full">
-                    Подробнее
+                    {t.detailsBtn}
                   </Button>
                 </Card>
               );
@@ -47,12 +51,12 @@ export default function ServicesPage() {
           </div>
 
           <div className="bg-primary-50 p-8 md:p-12 rounded-xl text-center animate-fade-in delay-300">
-            <h2 className="text-3xl font-bold mb-4">Не нашли нужную услугу?</h2>
+            <h2 className="text-3xl font-bold mb-4">{t.notFoundTitle}</h2>
             <p className="text-lg text-secondary-700 mb-8 max-w-2xl mx-auto">
-              Мы предлагаем индивидуальные решения для каждого клиента. Свяжитесь с нами для обсуждения вашего проекта.
+              {t.notFoundText}
             </p>
             <Button href="/contacts" variant="primary">
-              Связаться с нами
+              {t.contactBtn}
             </Button>
           </div>
         </Container>

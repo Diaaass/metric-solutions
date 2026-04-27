@@ -1,12 +1,16 @@
+'use client';
+
 import React from 'react';
 import Container from '@/components/ui/Container';
 import ConsultationForm from '@/components/forms/ConsultationForm';
-import { services } from '@/data/services';
 import { TestTube, CheckCircle2 } from 'lucide-react';
-
-const service = services.find(s => s.slug === 'ore-research')!;
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function OreResearchPage() {
+  const { lang } = useLanguage();
+  const service = lang.servicesData.find(s => s.slug === 'ore-research')!;
+  const t = lang.servicePage.oreResearch;
+
   return (
     <div className="bg-white">
       <section className="bg-gradient-to-br from-secondary-900 to-primary-700 text-white py-20">
@@ -29,22 +33,13 @@ export default function OreResearchPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-2">
               <div className="prose prose-lg max-w-none mb-12 animate-fade-in">
-                <h2 className="text-3xl font-bold mb-6">Почему важно исследовать руду?</h2>
-                <p className="text-secondary-700 leading-relaxed mb-6">
-                  Детальное изучение рудного сырья — это основа для разработки эффективной технологии
-                  переработки. Знание минералогического состава, форм нахождения ценных компонентов и
-                  технологических свойств руды позволяет выбрать оптимальные методы обогащения и
-                  параметры процесса.
-                </p>
-                <p className="text-secondary-700 leading-relaxed mb-6">
-                  Наши исследования включают комплекс современных аналитических методов и
-                  технологических испытаний, которые дают полную картину поведения руды в процессе
-                  обогащения.
-                </p>
+                <h2 className="text-3xl font-bold mb-6">{t.whatTitle}</h2>
+                <p className="text-secondary-700 leading-relaxed mb-6">{t.whatP1}</p>
+                <p className="text-secondary-700 leading-relaxed mb-6">{t.whatP2}</p>
               </div>
 
               <div className="mb-12 animate-fade-in delay-100">
-                <h3 className="text-2xl font-bold mb-6">Виды исследований</h3>
+                <h3 className="text-2xl font-bold mb-6">{t.featuresTitle}</h3>
                 <div className="space-y-3">
                   {service.features.map((feature, index) => (
                     <div key={index} className="flex items-start gap-3 bg-secondary-50 p-4 rounded-lg">
@@ -56,7 +51,7 @@ export default function OreResearchPage() {
               </div>
 
               <div className="bg-primary-50 p-8 rounded-xl animate-fade-in delay-200">
-                <h3 className="text-2xl font-bold mb-6">Что вы получите</h3>
+                <h3 className="text-2xl font-bold mb-6">{t.benefitsTitle}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {service.benefits.map((benefit, index) => (
                     <div key={index} className="flex items-start gap-3">

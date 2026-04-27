@@ -1,27 +1,32 @@
+'use client';
+
 import React from 'react';
 import Button from '@/components/ui/Button';
 import Container from '@/components/ui/Container';
 import { ChevronRight } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Hero() {
+  const { lang } = useLanguage();
+
   return (
     <section className="relative bg-gradient-to-br from-secondary-900 via-secondary-800 to-primary-900 text-white animate-gradient overflow-hidden">
       <Container>
         <div className="py-20 md:py-32">
           <div className="max-w-3xl">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight animate-fade-in-up">
-              Профессиональные решения в области геометаллургии
+              {lang.hero.title}
             </h1>
             <p className="text-xl md:text-2xl text-secondary-200 mb-8 animate-fade-in-up delay-200">
-              Повышаем эффективность обогащения руд через комплексный подход к геологии и металлургии
+              {lang.hero.subtitle}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 animate-fade-in-up delay-300">
               <Button href="/services" variant="primary" className="inline-flex items-center gap-2">
-                Наши услуги
+                {lang.hero.btnServices}
                 <ChevronRight className="h-5 w-5" />
               </Button>
               <Button href="/contacts" variant="outline" className="bg-transparent border-white text-white hover:bg-white hover:text-secondary-900">
-                Связаться с нами
+                {lang.hero.btnContact}
               </Button>
             </div>
           </div>

@@ -4,8 +4,12 @@ import React, { useState } from 'react';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { ContactFormData } from '@/types';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function ConsultationForm() {
+  const { lang } = useLanguage();
+  const t = lang.form;
+
   const [formData, setFormData] = useState<ContactFormData>({
     name: '',
     email: '',
@@ -38,7 +42,7 @@ export default function ConsultationForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || 'Ошибка отправки. Попробуйте позже.');
+        setError(data.error || t.errorConn);
         return;
       }
 
@@ -47,7 +51,7 @@ export default function ConsultationForm() {
 
       setTimeout(() => setIsSubmitted(false), 5000);
     } catch {
-      setError('Не удалось отправить заявку. Проверьте соединение.');
+      setError(t.errorConn);
     } finally {
       setIsLoading(false);
     }
@@ -55,13 +59,11 @@ export default function ConsultationForm() {
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-8">
-      <h3 className="text-2xl font-bold mb-6">Заказать консультацию</h3>
+      <h3 className="text-2xl font-bold mb-6">{t.title}</h3>
 
       {isSubmitted && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 font-medium">
-            Спасибо! Ваша заявка отправлена. Мы свяжемся с вами в ближайшее время.
-          </p>
+          <p className="text-green-800 font-medium">{t.success}</p>
         </div>
       )}
 
@@ -74,12 +76,12 @@ export default function ConsultationForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-secondary-700 mb-2">
-            Имя *
+            {t.nameLabel}
           </label>
           <Input
             id="name"
             name="name"
-            placeholder="Ваше имя"
+            placeholder={t.namePlaceholder}
             value={formData.name}
             onChange={handleChange}
             required
@@ -94,7 +96,7 @@ export default function ConsultationForm() {
             id="email"
             type="email"
             name="email"
-            placeholder="your@email.com"
+            placeholder={t.emailPlaceholder}
             value={formData.email}
             onChange={handleChange}
             required
@@ -103,13 +105,13 @@ export default function ConsultationForm() {
 
         <div>
           <label htmlFor="phone" className="block text-sm font-medium text-secondary-700 mb-2">
-            Телефон *
+            {t.phoneLabel}
           </label>
           <Input
             id="phone"
             type="tel"
             name="phone"
-            placeholder="+7 (___) ___-__-__"
+            placeholder={t.phonePlaceholder}
             value={formData.phone}
             onChange={handleChange}
             required
@@ -118,12 +120,12 @@ export default function ConsultationForm() {
 
         <div>
           <label htmlFor="company" className="block text-sm font-medium text-secondary-700 mb-2">
-            Компания
+            {t.companyLabel}
           </label>
           <Input
             id="company"
             name="company"
-            placeholder="Название компании"
+            placeholder={t.companyPlaceholder}
             value={formData.company}
             onChange={handleChange}
           />
@@ -131,13 +133,13 @@ export default function ConsultationForm() {
 
         <div>
           <label htmlFor="message" className="block text-sm font-medium text-secondary-700 mb-2">
-            Сообщение *
+            {t.messageLabel}
           </label>
           <textarea
             id="message"
             name="message"
             rows={4}
-            placeholder="Расскажите о вашем проекте..."
+            placeholder={t.messagePlaceholder}
             value={formData.message}
             onChange={handleChange}
             required
@@ -151,11 +153,11 @@ export default function ConsultationForm() {
           className="w-full"
           disabled={isLoading}
         >
-          {isLoading ? 'Отправка...' : 'Отправить заявку'}
+          {isLoading ? t.submitting : t.submit}
         </Button>
 
         <p className="text-xs text-secondary-500 text-center">
-          Нажимая кнопку, вы соглашаетесь с политикой конфиденциальности
+          {t.privacyNote}
         </p>
       </form>
     </div>

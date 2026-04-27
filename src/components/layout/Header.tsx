@@ -4,17 +4,25 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import Container from '@/components/ui/Container';
+import { useLanguage } from '@/contexts/LanguageContext';
+import type { Lang } from '@/i18n';
+
+const LANGS: { code: Lang; label: string }[] = [
+  { code: 'ru', label: 'RU' },
+  { code: 'kz', label: 'ҚЗ' },
+];
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { lang, langCode, setLang } = useLanguage();
 
   const navigation = [
-    { name: 'Главная', href: '/' },
-    { name: 'О компании', href: '/about' },
-    { name: 'Услуги', href: '/services' },
-    { name: 'Проекты', href: '/projects' },
-    { name: 'Команда', href: '/team' },
-    { name: 'Контакты', href: '/contacts' },
+    { name: lang.nav.home, href: '/' },
+    { name: lang.nav.about, href: '/about' },
+    { name: lang.nav.services, href: '/services' },
+    { name: lang.nav.projects, href: '/projects' },
+    { name: lang.nav.team, href: '/team' },
+    { name: lang.nav.contacts, href: '/contacts' },
   ];
 
   return (
@@ -30,7 +38,7 @@ export default function Header() {
           <nav className="hidden md:flex items-center space-x-8">
             {navigation.map((item) => (
               <Link
-                key={item.name}
+                key={item.href}
                 href={item.href}
                 className="text-secondary-700 hover:text-primary-600 transition-colors duration-200 font-medium"
               >
@@ -38,6 +46,23 @@ export default function Header() {
               </Link>
             ))}
           </nav>
+
+          {/* Right controls */}
+          <div className="hidden md:flex items-center gap-1 bg-secondary-100 rounded-lg p-1">
+            {LANGS.map(({ code, label }) => (
+              <button
+                key={code}
+                onClick={() => setLang(code)}
+                className={`px-3 py-1 rounded-md text-sm font-semibold transition-all duration-150 ${
+                  langCode === code
+                    ? 'bg-primary-600 text-white shadow-sm'
+                    : 'text-secondary-600 hover:text-secondary-900'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
           {/* Mobile menu button */}
           <button
@@ -59,7 +84,7 @@ export default function Header() {
           <nav className="md:hidden py-4 border-t border-secondary-200">
             {navigation.map((item) => (
               <Link
-                key={item.name}
+                key={item.href}
                 href={item.href}
                 onClick={() => setIsMenuOpen(false)}
                 className="block py-3 text-secondary-700 hover:text-primary-600 transition-colors duration-200 font-medium"
@@ -67,6 +92,23 @@ export default function Header() {
                 {item.name}
               </Link>
             ))}
+
+            {/* Mobile language switcher */}
+            <div className="flex items-center gap-1 bg-secondary-100 rounded-lg p-1 w-fit mt-3">
+              {LANGS.map(({ code, label }) => (
+                <button
+                  key={code}
+                  onClick={() => setLang(code)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-all duration-150 ${
+                    langCode === code
+                      ? 'bg-primary-600 text-white shadow-sm'
+                      : 'text-secondary-600 hover:text-secondary-900'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </nav>
         )}
       </Container>
