@@ -9,7 +9,7 @@ import type { Lang } from '@/i18n';
 
 const LANGS: { code: Lang; label: string }[] = [
   { code: 'ru', label: 'RU' },
-  { code: 'kz', label: 'ҚЗ' },
+  { code: 'kz', label: 'ҚАЗ' },
 ];
 
 export default function Header() {
