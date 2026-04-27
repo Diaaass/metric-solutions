@@ -8,23 +8,25 @@ interface ButtonProps {
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
   className?: string;
+  disabled?: boolean;
 }
 
-export default function Button({ 
-  children, 
-  variant = 'primary', 
-  href, 
-  onClick, 
+export default function Button({
+  children,
+  variant = 'primary',
+  href,
+  onClick,
   type = 'button',
-  className = '' 
+  className = '',
+  disabled = false,
 }: ButtonProps) {
-  const baseStyles = variant === 'primary' 
-    ? 'btn-primary' 
-    : variant === 'secondary' 
-    ? 'btn-secondary' 
+  const baseStyles = variant === 'primary'
+    ? 'btn-primary'
+    : variant === 'secondary'
+    ? 'btn-secondary'
     : 'btn-outline';
-  
-  const combinedClassName = `${baseStyles} ${className}`;
+
+  const combinedClassName = `${baseStyles} ${className} ${disabled ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''}`;
 
   if (href) {
     return (
@@ -35,7 +37,7 @@ export default function Button({
   }
 
   return (
-    <button type={type} onClick={onClick} className={combinedClassName}>
+    <button type={type} onClick={onClick} disabled={disabled} className={combinedClassName}>
       {children}
     </button>
   );

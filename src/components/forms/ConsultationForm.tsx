@@ -15,41 +15,59 @@ export default function ConsultationForm() {
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    setIsSubmitted(true);
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      company: '',
-      message: ''
-    });
+    setIsLoading(true);
+    setError('');
 
-    setTimeout(() => {
-      setIsSubmitted(false);
-    }, 5000);
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Ошибка отправки. Попробуйте позже.');
+        return;
+      }
+
+      setIsSubmitted(true);
+      setFormData({ name: '', email: '', phone: '', company: '', message: '' });
+
+      setTimeout(() => setIsSubmitted(false), 5000);
+    } catch {
+      setError('Не удалось отправить заявку. Проверьте соединение.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-8">
-      <h3 className="text-2xl font-bold mb-6 text-secondary-900">Заказать консультацию</h3>
-      
+      <h3 className="text-2xl font-bold mb-6">Заказать консультацию</h3>
+
       {isSubmitted && (
         <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
           <p className="text-green-800 font-medium">
             Спасибо! Ваша заявка отправлена. Мы свяжемся с вами в ближайшее время.
           </p>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-700 font-medium">{error}</p>
         </div>
       )}
 
@@ -59,6 +77,7 @@ export default function ConsultationForm() {
             Имя *
           </label>
           <Input
+            id="name"
             name="name"
             placeholder="Ваше имя"
             value={formData.name}
@@ -72,6 +91,7 @@ export default function ConsultationForm() {
             Email *
           </label>
           <Input
+            id="email"
             type="email"
             name="email"
             placeholder="your@email.com"
@@ -86,6 +106,7 @@ export default function ConsultationForm() {
             Телефон *
           </label>
           <Input
+            id="phone"
             type="tel"
             name="phone"
             placeholder="+7 (___) ___-__-__"
@@ -100,6 +121,7 @@ export default function ConsultationForm() {
             Компания
           </label>
           <Input
+            id="company"
             name="company"
             placeholder="Название компании"
             value={formData.company}
@@ -112,6 +134,7 @@ export default function ConsultationForm() {
             Сообщение *
           </label>
           <textarea
+            id="message"
             name="message"
             rows={4}
             placeholder="Расскажите о вашем проекте..."
@@ -122,8 +145,13 @@ export default function ConsultationForm() {
           />
         </div>
 
-        <Button type="submit" variant="primary" className="w-full">
-          Отправить заявку
+        <Button
+          type="submit"
+          variant="primary"
+          className="w-full"
+          disabled={isLoading}
+        >
+          {isLoading ? 'Отправка...' : 'Отправить заявку'}
         </Button>
 
         <p className="text-xs text-secondary-500 text-center">
