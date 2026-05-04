@@ -27,7 +27,7 @@ export default function MetalBalancePage() {
         </Container>
       </section>
 
-      <section className="section-padding relative overflow-hidden">
+      <section className="section-padding bg-secondary-50 relative overflow-hidden">
         <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
         <Container className="relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">

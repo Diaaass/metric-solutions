@@ -22,7 +22,7 @@ export default function AboutPage() {
         </Container>
       </section>
 
-      <section className="section-padding relative overflow-hidden">
+      <section className="section-padding bg-secondary-50 relative overflow-hidden">
         <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
         <Container className="relative z-10">
           <div className="max-w-4xl mx-auto">

@@ -28,8 +28,9 @@ export default function ServicesPage() {
         </Container>
       </section>
 
-      <section className="section-padding">
-        <Container>
+      <section className="section-padding bg-secondary-50 relative overflow-hidden">
+        <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
+        <Container className="relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
             {lang.servicesData.map((service, i) => {
               const Icon = iconMap[service.icon as keyof typeof iconMap];

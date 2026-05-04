@@ -46,8 +46,9 @@ export default function ContactsPage() {
         </Container>
       </section>
 
-      <section className="section-padding">
-        <Container>
+      <section className="section-padding bg-secondary-50 relative overflow-hidden">
+        <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
+        <Container className="relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div className="animate-fade-in-up delay-100">
               <h2 className="text-3xl font-bold mb-8">{t.howTitle}</h2>
