@@ -136,6 +136,7 @@ export interface Translation {
     title: string;
     nameLabel: string;
     namePlaceholder: string;
+    emailLabel: string;
     emailPlaceholder: string;
     phoneLabel: string;
     phonePlaceholder: string;
@@ -146,7 +147,10 @@ export interface Translation {
     submit: string;
     submitting: string;
     success: string;
+    successTitle: string;
+    close: string;
     errorConn: string;
+    errorPhone: string;
     privacyNote: string;
   };
   servicesData: ServiceData[];

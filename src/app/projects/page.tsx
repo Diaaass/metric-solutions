@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import Container from '@/components/ui/Container';
 import Card from '@/components/ui/Card';
 import { Calendar, Building2, Tag } from 'lucide-react';
@@ -22,12 +21,15 @@ export default function ProjectsPage() {
         </Container>
       </section>
 
-      <section className="section-padding bg-secondary-50 relative overflow-hidden">
-        <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
-        <Container className="relative z-10">
+      <section className="section-padding bg-secondary-50">
+        <Container>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {lang.projectsData.map((project, i) => (
-              <Card key={project.id} className={`animate-fade-in-up delay-${(i + 1) * 100}`}>
+              <Card
+                key={project.id}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${(i + 1) * 100}ms` }}
+              >
                 <div className="mb-4">
                   <div className="flex items-center gap-2 text-sm text-secondary-500 mb-3">
                     <Tag className="h-4 w-4" />
@@ -58,14 +60,6 @@ export default function ProjectsPage() {
                 </div>
               </Card>
             ))}
-          </div>
-
-          <div className="mt-16 bg-primary-50 p-8 md:p-12 rounded-xl text-center animate-fade-in delay-300">
-            <h2 className="text-3xl font-bold mb-4">{t.ctaTitle}</h2>
-            <p className="text-lg text-secondary-700 mb-8 max-w-2xl mx-auto">{t.ctaText}</p>
-            <Link href="/contacts" className="btn-primary inline-block">
-              {t.contactBtn}
-            </Link>
           </div>
         </Container>
       </section>

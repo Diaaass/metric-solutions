@@ -20,11 +20,12 @@ export default function Button({
   className = '',
   disabled = false,
 }: ButtonProps) {
-  const baseStyles = variant === 'primary'
-    ? 'btn-primary'
-    : variant === 'secondary'
-    ? 'btn-secondary'
-    : 'btn-outline';
+  const baseStyles =
+    variant === 'primary'
+      ? 'btn-primary'
+      : variant === 'secondary'
+        ? 'btn-secondary'
+        : 'btn-outline';
 
   const combinedClassName = `${baseStyles} ${className} ${disabled ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''}`;
 

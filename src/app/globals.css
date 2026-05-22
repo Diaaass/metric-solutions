@@ -7,7 +7,12 @@
     @apply bg-white text-secondary-900 font-sans;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-serif font-bold;
     letter-spacing: -0.02em;
   }
@@ -46,7 +51,7 @@
   .btn-primary {
     @apply bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold
            hover:bg-primary-700 transition-all duration-200
-           hover:shadow-lg hover:scale-[1.02];
+           hover:shadow-lg hover:scale-[1.04];
   }
 
   .btn-secondary {
@@ -96,23 +101,14 @@
   }
 }
 
-@keyframes gradient-shift {
-  0%, 100% {
-    background-position: 0% 50%;
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
   }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes pulse-subtle {
-  0%, 100% {
-    transform: scale(1);
+  to {
     opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.9;
+    transform: scale(1);
   }
 }
 
@@ -126,41 +122,15 @@
   opacity: 0;
 }
 
-.animate-gradient {
-  background-size: 200% 200%;
-  animation: gradient-shift 15s ease infinite;
+.delay-100 {
+  animation-delay: 0.1s;
 }
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 3s ease-in-out infinite;
+.delay-200 {
+  animation-delay: 0.2s;
 }
-
-.delay-100 { animation-delay: 0.1s; }
-.delay-200 { animation-delay: 0.2s; }
-.delay-300 { animation-delay: 0.3s; }
-.delay-400 { animation-delay: 0.4s; }
-
-/* ─── Geometric backgrounds ─────────────────────────────── */
-
-/* Точечная сетка — лаборатория, данные, анализ */
-.dot-grid-bg {
-  background-image: radial-gradient(circle, #64748b 1.5px, transparent 1.5px);
-  background-size: 28px 28px;
-  opacity: 0.15;
+.delay-300 {
+  animation-delay: 0.3s;
 }
-
-/* Тонкая сетка — технические чертежи */
-.grid-bg {
-  background-image:
-    linear-gradient(#cbd5e1 1px, transparent 1px),
-    linear-gradient(90deg, #cbd5e1 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: 0.6;
-}
-
-/* Белые точки на тёмном фоне */
-.dot-grid-bg-white {
-  background-image: radial-gradient(circle, rgba(255,255,255,0.4) 1.5px, transparent 1.5px);
-  background-size: 28px 28px;
-  opacity: 0.6;
+.delay-400 {
+  animation-delay: 0.4s;
 }

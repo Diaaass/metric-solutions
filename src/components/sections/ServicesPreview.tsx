@@ -17,9 +17,8 @@ export default function ServicesPreview() {
   const { lang } = useLanguage();
 
   return (
-    <section className="section-padding bg-secondary-50 relative overflow-hidden">
-      <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
-      <Container className="relative z-10">
+    <section className="section-padding bg-secondary-50">
+      <Container>
         <div className="text-center mb-12 animate-fade-in">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">{lang.servicesPreview.title}</h2>
           <p className="text-xl text-secondary-600 max-w-2xl mx-auto">
@@ -31,7 +30,11 @@ export default function ServicesPreview() {
           {lang.servicesData.map((service, index) => {
             const Icon = iconMap[service.icon as keyof typeof iconMap];
             return (
-              <Card key={service.id} className={`animate-fade-in-up delay-${(index + 1) * 100}`}>
+              <Card
+                key={service.id}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${(index + 1) * 100}ms` }}
+              >
                 <div className="flex flex-col h-full">
                   <div className="mb-4">
                     <div className="w-14 h-14 bg-primary-100 rounded-lg flex items-center justify-center">

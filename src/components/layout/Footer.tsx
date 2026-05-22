@@ -2,9 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Mail, Phone, MapPin } from 'lucide-react';
 import Container from '@/components/ui/Container';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { contacts } from '@/data/contacts';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -15,19 +17,51 @@ export default function Footer() {
       <Container>
         <div className="py-12 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-1">
-            <h3 className="text-xl font-bold mb-4 text-white">Metric Solution</h3>
-            <p className="text-secondary-300 text-sm">
-              {lang.footer.description}
-            </p>
+            <Image
+              src="/logo-white.png"
+              alt="Metric Solution"
+              width={216}
+              height={160}
+              className="h-16 w-auto mb-4"
+            />
+            <p className="text-secondary-200 text-sm">{lang.footer.description}</p>
           </div>
 
           <div>
             <h4 className="font-semibold mb-4 text-white">{lang.footer.navTitle}</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/about" className="text-secondary-300 hover:text-primary-400 transition-colors">{lang.nav.about}</Link></li>
-              <li><Link href="/services" className="text-secondary-300 hover:text-primary-400 transition-colors">{lang.nav.services}</Link></li>
-              <li><Link href="/projects" className="text-secondary-300 hover:text-primary-400 transition-colors">{lang.nav.projects}</Link></li>
-              <li><Link href="/team" className="text-secondary-300 hover:text-primary-400 transition-colors">{lang.nav.team}</Link></li>
+              <li>
+                <Link
+                  href="/about"
+                  className="text-secondary-200 hover:text-primary-300 transition-colors"
+                >
+                  {lang.nav.about}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/services"
+                  className="text-secondary-200 hover:text-primary-300 transition-colors"
+                >
+                  {lang.nav.services}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/projects"
+                  className="text-secondary-200 hover:text-primary-300 transition-colors"
+                >
+                  {lang.nav.projects}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/team"
+                  className="text-secondary-200 hover:text-primary-300 transition-colors"
+                >
+                  {lang.nav.team}
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -36,7 +70,10 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               {lang.servicesData.map((s) => (
                 <li key={s.slug}>
-                  <Link href={`/services/${s.slug}`} className="text-secondary-300 hover:text-primary-400 transition-colors">
+                  <Link
+                    href={`/services/${s.slug}`}
+                    className="text-secondary-200 hover:text-primary-300 transition-colors"
+                  >
                     {s.title}
                   </Link>
                 </li>
@@ -49,21 +86,25 @@ export default function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-start gap-2">
                 <Mail className="h-5 w-5 text-primary-400 flex-shrink-0 mt-0.5" />
-                <a href="mailto:info@metricsolution.com" className="text-secondary-300 hover:text-primary-400 transition-colors">
-                  info@metricsolution.com
+                <a
+                  href={`mailto:${contacts.email}`}
+                  className="text-secondary-200 hover:text-primary-300 transition-colors"
+                >
+                  {contacts.email}
                 </a>
               </li>
               <li className="flex items-start gap-2">
                 <Phone className="h-5 w-5 text-primary-400 flex-shrink-0 mt-0.5" />
-                <a href="tel:+77172000000" className="text-secondary-300 hover:text-primary-400 transition-colors">
-                  +7 (717) 200-00-00
+                <a
+                  href={`tel:${contacts.phone}`}
+                  className="text-secondary-200 hover:text-primary-300 transition-colors"
+                >
+                  {contacts.phoneDisplay}
                 </a>
               </li>
               <li className="flex items-start gap-2">
                 <MapPin className="h-5 w-5 text-primary-400 flex-shrink-0 mt-0.5" />
-                <span className="text-secondary-300">
-                  {lang.contactsPage.addressText}
-                </span>
+                <span className="text-secondary-200">{lang.contactsPage.addressText}</span>
               </li>
             </ul>
           </div>
@@ -71,7 +112,9 @@ export default function Footer() {
 
         <div className="border-t border-secondary-800 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-secondary-400">
-            <p>&copy; {currentYear} Metric Solution. {lang.footer.rights}</p>
+            <p>
+              &copy; {currentYear} Metric Solution. {lang.footer.rights}
+            </p>
           </div>
         </div>
       </Container>

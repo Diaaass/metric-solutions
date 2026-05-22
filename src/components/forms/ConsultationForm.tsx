@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import { ContactFormData } from '@/types';
@@ -15,20 +16,64 @@ export default function ConsultationForm() {
     email: '',
     phone: '',
     company: '',
-    message: ''
+    message: '',
   });
+  const [website, setWebsite] = useState('');
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [phoneError, setPhoneError] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  const formatPhone = (raw: string): string => {
+    let digits = raw.replace(/\D/g, '');
+    if (digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
+      digits = digits.slice(1);
+    }
+    digits = digits.slice(0, 10);
+    if (digits.length === 0) return '';
+    let out = '+7';
+    if (digits.length > 0) out += ' (' + digits.slice(0, 3);
+    if (digits.length >= 3) out += ')';
+    if (digits.length > 3) out += ' ' + digits.slice(3, 6);
+    if (digits.length > 6) out += '-' + digits.slice(6, 8);
+    if (digits.length > 8) out += '-' + digits.slice(8, 10);
+    return out;
+  };
+
+  const isPhoneValid = (value: string): boolean => {
+    const digits = value.replace(/\D/g, '');
+    return digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'));
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'phone') {
+      const formatted = formatPhone(value);
+      setFormData((prev) => ({ ...prev, phone: formatted }));
+      if (phoneError && isPhoneValid(formatted)) setPhoneError(false);
+      return;
+    }
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePhoneBlur = () => {
+    if (formData.phone && !isPhoneValid(formData.phone)) {
+      setPhoneError(true);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isPhoneValid(formData.phone)) {
+      setPhoneError(true);
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
@@ -36,7 +81,7 @@ export default function ConsultationForm() {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, website }),
       });
 
       const data = await res.json();
@@ -48,8 +93,7 @@ export default function ConsultationForm() {
 
       setIsSubmitted(true);
       setFormData({ name: '', email: '', phone: '', company: '', message: '' });
-
-      setTimeout(() => setIsSubmitted(false), 5000);
+      setPhoneError(false);
     } catch {
       setError(t.errorConn);
     } finally {
@@ -57,15 +101,28 @@ export default function ConsultationForm() {
     }
   };
 
+  const closeModal = () => setIsSubmitted(false);
+
+  useEffect(() => {
+    if (!isSubmitted) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeModal();
+    };
+    document.addEventListener('keydown', onKey);
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isSubmitted]);
+
   return (
     <div className="bg-white rounded-xl shadow-lg p-8">
       <h3 className="text-2xl font-bold mb-6">{t.title}</h3>
-
-      {isSubmitted && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 font-medium">{t.success}</p>
-        </div>
-      )}
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -74,6 +131,29 @@ export default function ConsultationForm() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: '-10000px',
+            top: 'auto',
+            width: 1,
+            height: 1,
+            overflow: 'hidden',
+          }}
+        >
+          <label>
+            Website
+            <input
+              type="text"
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+            />
+          </label>
+        </div>
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-secondary-700 mb-2">
             {t.nameLabel}
@@ -90,7 +170,7 @@ export default function ConsultationForm() {
 
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-secondary-700 mb-2">
-            Email *
+            {t.emailLabel}
           </label>
           <Input
             id="email"
@@ -111,11 +191,21 @@ export default function ConsultationForm() {
             id="phone"
             type="tel"
             name="phone"
+            inputMode="tel"
+            autoComplete="tel"
+            maxLength={18}
             placeholder={t.phonePlaceholder}
             value={formData.phone}
             onChange={handleChange}
+            onBlur={handlePhoneBlur}
+            invalid={phoneError}
             required
           />
+          {phoneError && (
+            <p id="phone-error" role="alert" className="mt-2 text-sm text-red-600">
+              {t.errorPhone}
+            </p>
+          )}
         </div>
 
         <div>
@@ -147,19 +237,56 @@ export default function ConsultationForm() {
           />
         </div>
 
-        <Button
-          type="submit"
-          variant="primary"
-          className="w-full"
-          disabled={isLoading}
-        >
+        <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
           {isLoading ? t.submitting : t.submit}
         </Button>
 
-        <p className="text-xs text-secondary-500 text-center">
-          {t.privacyNote}
-        </p>
+        <p className="text-xs text-secondary-500 text-center">{t.privacyNote}</p>
       </form>
+
+      {mounted && isSubmitted &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="thx-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]"
+            onClick={closeModal}
+          >
+            <div
+              className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-[scaleIn_0.25s_ease-out]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={closeModal}
+                aria-label={t.close}
+                className="absolute top-4 right-4 text-secondary-400 hover:text-secondary-700 transition-colors"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+
+              <h4 id="thx-title" className="text-2xl font-bold text-secondary-900 mb-2">
+                {t.successTitle}
+              </h4>
+              <p className="text-secondary-600 mb-6">{t.success}</p>
+
+              <Button type="button" variant="primary" className="w-full" onClick={closeModal}>
+                {t.close}
+              </Button>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

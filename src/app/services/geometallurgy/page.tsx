@@ -8,7 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function GeometallurgyPage() {
   const { lang } = useLanguage();
-  const service = lang.servicesData.find(s => s.slug === 'geometallurgy')!;
+  const service = lang.servicesData.find((s) => s.slug === 'geometallurgy')!;
   const t = lang.servicePage.geometallurgy;
 
   return (
@@ -27,9 +27,8 @@ export default function GeometallurgyPage() {
         </Container>
       </section>
 
-      <section className="section-padding bg-secondary-50 relative overflow-hidden">
-        <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
-        <Container className="relative z-10">
+      <section className="section-padding bg-secondary-50">
+        <Container>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             <div className="lg:col-span-2">
               <div className="prose prose-lg max-w-none mb-12 animate-fade-in">
@@ -42,7 +41,10 @@ export default function GeometallurgyPage() {
                 <h3 className="text-2xl font-bold mb-6">{t.featuresTitle}</h3>
                 <div className="space-y-3">
                   {service.features.map((feature, index) => (
-                    <div key={index} className="flex items-start gap-3 bg-secondary-50 p-4 rounded-lg">
+                    <div
+                      key={index}
+                      className="flex items-start gap-3 bg-secondary-50 p-4 rounded-lg"
+                    >
                       <CheckCircle2 className="h-6 w-6 text-primary-600 flex-shrink-0 mt-0.5" />
                       <span className="text-secondary-700">{feature}</span>
                     </div>

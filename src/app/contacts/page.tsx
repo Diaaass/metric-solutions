@@ -5,6 +5,7 @@ import Container from '@/components/ui/Container';
 import ConsultationForm from '@/components/forms/ConsultationForm';
 import { Mail, Phone, MapPin, Clock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { contacts } from '@/data/contacts';
 
 export default function ContactsPage() {
   const { lang } = useLanguage();
@@ -14,12 +15,20 @@ export default function ContactsPage() {
     {
       Icon: Mail,
       label: t.emailLabel,
-      content: <a href="mailto:info@metricsolution.com" className="text-primary-600 hover:text-primary-700">info@metricsolution.com</a>,
+      content: (
+        <a href={`mailto:${contacts.email}`} className="text-primary-600 hover:text-primary-700">
+          {contacts.email}
+        </a>
+      ),
     },
     {
       Icon: Phone,
       label: t.phoneLabel,
-      content: <a href="tel:+77172000000" className="text-primary-600 hover:text-primary-700">+7 (717) 200-00-00</a>,
+      content: (
+        <a href={`tel:${contacts.phone}`} className="text-primary-600 hover:text-primary-700">
+          {contacts.phoneDisplay}
+        </a>
+      ),
     },
     {
       Icon: MapPin,
@@ -29,9 +38,7 @@ export default function ContactsPage() {
     {
       Icon: Clock,
       label: t.hoursLabel,
-      content: (
-        <p className="text-secondary-700 whitespace-pre-line">{t.hoursText}</p>
-      ),
+      content: <p className="text-secondary-700 whitespace-pre-line">{t.hoursText}</p>,
     },
   ];
 
@@ -46,16 +53,19 @@ export default function ContactsPage() {
         </Container>
       </section>
 
-      <section className="section-padding bg-secondary-50 relative overflow-hidden">
-        <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
-        <Container className="relative z-10">
+      <section className="section-padding bg-secondary-50">
+        <Container>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div className="animate-fade-in-up delay-100">
               <h2 className="text-3xl font-bold mb-8">{t.howTitle}</h2>
 
               <div className="space-y-6 mb-12">
                 {contactItems.map(({ Icon, label, content }, i) => (
-                  <div key={i} className={`flex items-start gap-4 animate-fade-in-up delay-${(i + 1) * 100}`}>
+                  <div
+                    key={i}
+                    className="flex items-start gap-4 animate-fade-in-up"
+                    style={{ animationDelay: `${(i + 1) * 100}ms` }}
+                  >
                     <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
                       <Icon className="h-6 w-6 text-primary-600" />
                     </div>

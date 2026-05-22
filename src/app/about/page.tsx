@@ -22,9 +22,8 @@ export default function AboutPage() {
         </Container>
       </section>
 
-      <section className="section-padding bg-secondary-50 relative overflow-hidden">
-        <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
-        <Container className="relative z-10">
+      <section className="section-padding bg-secondary-50">
+        <Container>
           <div className="max-w-4xl mx-auto">
             <div className="prose prose-lg max-w-none mb-12 animate-fade-in">
               <p className="text-lg text-secondary-700 leading-relaxed mb-6">{t.intro1}</p>
@@ -35,7 +34,11 @@ export default function AboutPage() {
               {t.cards.map(({ title, text }, i) => {
                 const Icon = cardIcons[i];
                 return (
-                  <div key={i} className={`bg-secondary-50 p-6 rounded-xl animate-fade-in-up delay-${(i + 1) * 100}`}>
+                  <div
+                    key={i}
+                    className="bg-secondary-50 p-6 rounded-xl animate-fade-in-up"
+                    style={{ animationDelay: `${(i + 1) * 100}ms` }}
+                  >
                     <Icon className="h-10 w-10 text-primary-600 mb-4" />
                     <h3 className="text-xl font-bold mb-3">{title}</h3>
                     <p className="text-secondary-700">{text}</p>

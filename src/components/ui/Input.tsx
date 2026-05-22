@@ -7,7 +7,12 @@ interface InputProps {
   placeholder?: string;
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  inputMode?: 'text' | 'tel' | 'email' | 'numeric' | 'decimal' | 'search' | 'url' | 'none';
+  autoComplete?: string;
+  maxLength?: number;
   required?: boolean;
+  invalid?: boolean;
   className?: string;
 }
 
@@ -18,8 +23,13 @@ export default function Input({
   placeholder,
   value,
   onChange,
+  onBlur,
+  inputMode,
+  autoComplete,
+  maxLength,
   required = false,
-  className = ''
+  invalid = false,
+  className = '',
 }: InputProps) {
   return (
     <input
@@ -29,8 +39,13 @@ export default function Input({
       placeholder={placeholder}
       value={value}
       onChange={onChange}
+      onBlur={onBlur}
+      inputMode={inputMode}
+      autoComplete={autoComplete}
+      maxLength={maxLength}
       required={required}
-      className={`input-field ${className}`}
+      aria-invalid={invalid || undefined}
+      className={`input-field ${invalid ? 'border-red-400 focus:ring-red-500' : ''} ${className}`}
     />
   );
 }

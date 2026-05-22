@@ -5,6 +5,7 @@
 /.next/
 /out/
 /build
+tsconfig.tsbuildinfo
 
 # Env files
 .env

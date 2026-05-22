@@ -28,14 +28,17 @@ export default function ServicesPage() {
         </Container>
       </section>
 
-      <section className="section-padding bg-secondary-50 relative overflow-hidden">
-        <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
-        <Container className="relative z-10">
+      <section className="section-padding bg-secondary-50">
+        <Container>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
             {lang.servicesData.map((service, i) => {
               const Icon = iconMap[service.icon as keyof typeof iconMap];
               return (
-                <Card key={service.id} className={`animate-fade-in-up delay-${(i + 1) * 100}`}>
+                <Card
+                  key={service.id}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${(i + 1) * 100}ms` }}
+                >
                   <div className="mb-6">
                     <div className="w-16 h-16 bg-primary-100 rounded-xl flex items-center justify-center mb-4">
                       <Icon className="h-8 w-8 text-primary-600" />
@@ -53,9 +56,7 @@ export default function ServicesPage() {
 
           <div className="bg-primary-50 p-8 md:p-12 rounded-xl text-center animate-fade-in delay-300">
             <h2 className="text-3xl font-bold mb-4">{t.notFoundTitle}</h2>
-            <p className="text-lg text-secondary-700 mb-8 max-w-2xl mx-auto">
-              {t.notFoundText}
-            </p>
+            <p className="text-lg text-secondary-700 mb-8 max-w-2xl mx-auto">{t.notFoundText}</p>
             <Button href="/contacts" variant="primary">
               {t.contactBtn}
             </Button>
