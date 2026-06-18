@@ -8,6 +8,7 @@ interface InputProps {
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
   inputMode?: 'text' | 'tel' | 'email' | 'numeric' | 'decimal' | 'search' | 'url' | 'none';
   autoComplete?: string;
   maxLength?: number;
@@ -24,6 +25,7 @@ export default function Input({
   value,
   onChange,
   onBlur,
+  onFocus,
   inputMode,
   autoComplete,
   maxLength,
@@ -40,6 +42,7 @@ export default function Input({
       value={value}
       onChange={onChange}
       onBlur={onBlur}
+      onFocus={onFocus}
       inputMode={inputMode}
       autoComplete={autoComplete}
       maxLength={maxLength}

@@ -10,48 +10,37 @@ export interface ServiceData {
   benefits: string[];
 }
 
-export interface ProjectData {
-  id: string;
-  title: string;
-  client: string;
-  category: string;
-  description: string;
-  results: string[];
-  year: number;
-}
-
-export interface TeamMemberData {
-  id: string;
-  name: string;
-  position: string;
-  bio: string;
-  expertise: string[];
-}
-
 export interface Translation {
   nav: {
     home: string;
     about: string;
     services: string;
-    projects: string;
-    team: string;
+    solutions: string;
     contacts: string;
   };
   hero: {
+    eyebrow: string;
     title: string;
     subtitle: string;
     btnServices: string;
     btnContact: string;
+    stat1Value: string;
+    stat1Label: string;
+    stat2Value: string;
+    stat2Label: string;
   };
   servicesPreview: {
+    eyebrow: string;
     title: string;
     subtitle: string;
     learnMore: string;
+    allBtn: string;
   };
   stats: {
     items: Array<{ value: string; label: string }>;
   };
   cta: {
+    eyebrow: string;
     title: string;
     subtitle: string;
     points: string[];
@@ -68,9 +57,37 @@ export interface Translation {
     heroSubtitle: string;
     intro1: string;
     intro2: string;
+    missionTitle: string;
+    missionText: string;
+    valuesTitle: string;
+    values: string[];
+    cardsTitle: string;
     cards: Array<{ title: string; text: string }>;
     whyTitle: string;
     reasons: Array<{ title: string; text: string }>;
+  };
+  audience: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    clients: string[];
+    geoTitle: string;
+    geo: string[];
+  };
+  metals: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    updatedLabel: string;
+    sourceLabel: string;
+    disclaimer: string;
+    names: {
+      gold: string;
+      silver: string;
+      copper: string;
+      zinc: string;
+      aluminum: string;
+    };
   };
   servicesPage: {
     heroTitle: string;
@@ -80,44 +97,21 @@ export interface Translation {
     notFoundText: string;
     contactBtn: string;
   };
-  servicePage: {
-    geometallurgy: {
-      whatTitle: string;
-      whatP1: string;
-      whatP2: string;
-      featuresTitle: string;
-      benefitsTitle: string;
-    };
-    metalBalance: {
-      whatTitle: string;
-      whatP1: string;
-      whatP2: string;
-      featuresTitle: string;
-      benefitsTitle: string;
-    };
-    oreResearch: {
-      whatTitle: string;
-      whatP1: string;
-      whatP2: string;
-      featuresTitle: string;
-      benefitsTitle: string;
-    };
-  };
-  projectsPage: {
+  solutionsPage: {
+    heroEyebrow: string;
     heroTitle: string;
     heroSubtitle: string;
-    resultsLabel: string;
+    intro: string;
+    items: Array<{
+      slug: string;
+      name: string;
+      tagline: string;
+      description: string;
+      points: string[];
+    }>;
     ctaTitle: string;
     ctaText: string;
     contactBtn: string;
-  };
-  teamPage: {
-    heroTitle: string;
-    heroSubtitle: string;
-    expertiseLabel: string;
-    ctaTitle: string;
-    ctaText: string;
-    joinBtn: string;
   };
   contactsPage: {
     heroTitle: string;
@@ -154,6 +148,4 @@ export interface Translation {
     privacyNote: string;
   };
   servicesData: ServiceData[];
-  projectsData: ProjectData[];
-  teamData: TeamMemberData[];
 }

@@ -1,5 +1,7 @@
 export const contacts = {
-  email: 'info@metricsolution.com',
-  phone: '+77172000000',
-  phoneDisplay: '+7 (717) 200-00-00',
+  email: 'Support@metricsolutions.kz',
+  // Телефон в брифе помечен «уточняется» — заполнить реальным номером перед запуском.
+  phone: '',
+  phoneDisplay: 'Уточняется',
+  // WhatsApp / Telegram / соцсети в брифе не заполнены — добавить при получении.
 } as const;

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Sans, IBM_Plex_Serif } from 'next/font/google';
+import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -12,24 +12,25 @@ const plexSans = IBM_Plex_Sans({
   display: 'swap',
 });
 
-const plexSerif = IBM_Plex_Serif({
-  weight: ['600', '700'],
+const plexMono = IBM_Plex_Mono({
+  weight: ['400', '500', '600'],
   subsets: ['latin', 'cyrillic'],
-  variable: '--font-plex-serif',
+  variable: '--font-plex-mono',
   display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: 'Metric Solution - Геометаллургия и обогащение руд',
+  title: 'Metric Solutions — геометаллургия, обогащение и гидрометаллургия',
   description:
-    'Профессиональные решения в области геометаллургии, баланса металлов и исследования руд для обогатительных фабрик и горно-металлургических комбинатов',
-  keywords: 'геометаллургия, баланс металлов, исследование руды, обогащение руд, металлургия',
+    'Metric Solutions — инженерно-консалтинговая компания для горнодобывающей и металлургической промышленности: геометаллургия, обогащение полезных ископаемых, флотация, гидрометаллургия, лабораторные и пилотные испытания. Собственные мобильные решения NomadLab и Nomad Pilot Plant.',
+  keywords:
+    'геометаллургия, обогащение полезных ископаемых, флотация, гидрометаллургия, технологический аудит, лабораторные исследования, пилотные испытания, горно-металлургический консалтинг, NomadLab',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
-      <body className={`${plexSans.variable} ${plexSerif.variable} font-sans`}>
+      <body className={`${plexSans.variable} ${plexMono.variable} font-sans`}>
         <LanguageProvider>
           <Header />
           <main className="min-h-screen">{children}</main>

@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-white text-secondary-900 font-sans;
+    @apply bg-white text-secondary-900 font-sans antialiased;
   }
 
   h1,
@@ -13,33 +13,33 @@
   h4,
   h5,
   h6 {
-    @apply font-serif font-bold;
-    letter-spacing: -0.02em;
+    /* Цвет наследуется от родителя: тёмный на светлом фоне, белый на тёмных секциях (CTA, футер) */
+    @apply font-sans font-bold;
+    letter-spacing: -0.025em;
+    color: inherit;
   }
 
   h1 {
-    @apply text-4xl md:text-5xl lg:text-6xl;
-    line-height: 1.1;
+    @apply text-4xl md:text-5xl lg:text-[3.5rem];
+    line-height: 1.08;
   }
 
   h2 {
     @apply text-3xl md:text-4xl;
-    line-height: 1.2;
+    line-height: 1.15;
   }
 
   h3 {
-    @apply text-2xl md:text-3xl;
-    line-height: 1.3;
-  }
-
-  h4 {
     @apply text-xl md:text-2xl;
-    line-height: 1.4;
+    line-height: 1.3;
   }
 
   p {
     line-height: 1.7;
-    letter-spacing: 0.01em;
+  }
+
+  ::selection {
+    @apply bg-accent-600/20 text-primary-900;
   }
 }
 
@@ -48,43 +48,77 @@
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
+  /* Моно-подпись над заголовками с металлической полоской */
+  .eyebrow {
+    @apply inline-flex items-center gap-2.5 font-mono text-xs uppercase tracking-[0.16em] text-accent-700 font-medium;
+  }
+
+  .eyebrow::before {
+    content: '';
+    @apply inline-block h-[3px] w-8 rounded-full bg-metal;
+  }
+
+  /* Основная кнопка — тёмно-синий (бренд) */
   .btn-primary {
-    @apply bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold
-           hover:bg-primary-700 transition-all duration-200
-           hover:shadow-lg hover:scale-[1.04];
+    @apply inline-flex items-center justify-center gap-2 bg-primary-900 text-white px-6 py-3 rounded-lg font-semibold text-[15px]
+           hover:bg-primary-800 transition-colors duration-200
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
   }
 
   .btn-secondary {
-    @apply bg-secondary-100 text-secondary-900 px-6 py-3 rounded-lg font-semibold
-           hover:bg-secondary-200 transition-colors duration-200;
+    @apply inline-flex items-center justify-center gap-2 bg-secondary-800 text-white px-6 py-3 rounded-lg font-semibold text-[15px]
+           hover:bg-secondary-700 transition-colors duration-200
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-500 focus-visible:ring-offset-2;
   }
 
   .btn-outline {
-    @apply border-2 border-primary-600 text-primary-600 px-6 py-3 rounded-lg font-semibold
-           hover:bg-primary-600 hover:text-white transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 border border-secondary-300 bg-white text-secondary-800 px-6 py-3 rounded-lg font-semibold text-[15px]
+           hover:border-primary-700 hover:text-primary-800 transition-colors duration-200
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
   }
 
+  /* Тонкая металлическая акцентная полоса */
+  .metal-bar {
+    @apply bg-metal;
+  }
+
+  /* Чистая корпоративная карточка */
   .card {
-    @apply bg-white rounded-xl shadow-lg p-6 border border-secondary-100
+    @apply relative bg-white rounded-xl p-6 border border-secondary-200
            transition-all duration-300
-           hover:shadow-2xl hover:-translate-y-2;
+           hover:border-secondary-300 hover:shadow-card hover:-translate-y-0.5;
   }
 
   .input-field {
-    @apply w-full px-4 py-3 border border-secondary-300 rounded-lg
-           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+    @apply w-full px-4 py-3 bg-white border border-secondary-300 rounded-lg text-secondary-900 placeholder:text-secondary-400
+           focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent
            transition-all duration-200;
   }
 
   .section-padding {
     @apply py-16 md:py-24;
   }
+
+  /* Тонкая техническая сетка для светлых секций */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgba(15, 34, 64, 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(15, 34, 64, 0.04) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  .bg-grid-dark {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
 }
 
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -101,24 +135,13 @@
   }
 }
 
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 .animate-fade-in-up {
-  animation: fadeInUp 0.6s ease-out forwards;
+  animation: fadeInUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.8s ease-out forwards;
+  animation: fadeIn 0.7s ease-out forwards;
   opacity: 0;
 }
 
@@ -133,4 +156,13 @@
 }
 .delay-400 {
   animation-delay: 0.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-fade-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }

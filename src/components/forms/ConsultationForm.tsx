@@ -28,26 +28,26 @@ export default function ConsultationForm() {
 
   useEffect(() => setMounted(true), []);
 
+  const PHONE_PREFIX = '+7 (';
+
+  // Цифры абонента без кода страны (10 цифр максимум)
+  const phoneDigits = (value: string): string => {
+    let digits = value.replace(/\D/g, '');
+    if (digits[0] === '7' || digits[0] === '8') digits = digits.slice(1);
+    return digits.slice(0, 10);
+  };
+
+  // Маска +7 (XXX) XXX XXXX. Префикс «+7 (» не стирается.
   const formatPhone = (raw: string): string => {
-    let digits = raw.replace(/\D/g, '');
-    if (digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
-      digits = digits.slice(1);
-    }
-    digits = digits.slice(0, 10);
-    if (digits.length === 0) return '';
-    let out = '+7';
-    if (digits.length > 0) out += ' (' + digits.slice(0, 3);
-    if (digits.length >= 3) out += ')';
-    if (digits.length > 3) out += ' ' + digits.slice(3, 6);
-    if (digits.length > 6) out += '-' + digits.slice(6, 8);
-    if (digits.length > 8) out += '-' + digits.slice(8, 10);
+    const d = phoneDigits(raw);
+    let out = PHONE_PREFIX + d.slice(0, 3);
+    if (d.length >= 3) out += ')';
+    if (d.length > 3) out += ' ' + d.slice(3, 6);
+    if (d.length > 6) out += ' ' + d.slice(6, 10);
     return out;
   };
 
-  const isPhoneValid = (value: string): boolean => {
-    const digits = value.replace(/\D/g, '');
-    return digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'));
-  };
+  const isPhoneValid = (value: string): boolean => phoneDigits(value).length === 10;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -60,10 +60,20 @@ export default function ConsultationForm() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handlePhoneBlur = () => {
-    if (formData.phone && !isPhoneValid(formData.phone)) {
-      setPhoneError(true);
+  const handlePhoneFocus = () => {
+    if (!formData.phone) {
+      setFormData((prev) => ({ ...prev, phone: PHONE_PREFIX }));
     }
+  };
+
+  const handlePhoneBlur = () => {
+    // Пусто (только префикс) — очищаем; иначе валидируем
+    if (phoneDigits(formData.phone).length === 0) {
+      setFormData((prev) => ({ ...prev, phone: '' }));
+      setPhoneError(false);
+      return;
+    }
+    if (!isPhoneValid(formData.phone)) setPhoneError(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -193,10 +203,11 @@ export default function ConsultationForm() {
             name="phone"
             inputMode="tel"
             autoComplete="tel"
-            maxLength={18}
+            maxLength={17}
             placeholder={t.phonePlaceholder}
             value={formData.phone}
             onChange={handleChange}
+            onFocus={handlePhoneFocus}
             onBlur={handlePhoneBlur}
             invalid={phoneError}
             required
@@ -244,7 +255,8 @@ export default function ConsultationForm() {
         <p className="text-xs text-secondary-500 text-center">{t.privacyNote}</p>
       </form>
 
-      {mounted && isSubmitted &&
+      {mounted &&
+        isSubmitted &&
         createPortal(
           <div
             role="dialog"
@@ -263,14 +275,32 @@ export default function ConsultationForm() {
                 aria-label={t.close}
                 className="absolute top-4 right-4 text-secondary-400 hover:text-secondary-700 transition-colors"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
 
               <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#16a34a"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
