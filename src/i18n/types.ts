@@ -1,15 +1,5 @@
 export type Lang = 'ru' | 'kz';
 
-export interface ServiceData {
-  id: string;
-  title: string;
-  slug: string;
-  description: string;
-  icon: string;
-  features: string[];
-  benefits: string[];
-}
-
 export interface Translation {
   nav: {
     home: string;
@@ -18,62 +8,121 @@ export interface Translation {
     solutions: string;
     contacts: string;
   };
+
   hero: {
     eyebrow: string;
     title: string;
+    titleAccent: string;
     subtitle: string;
-    btnServices: string;
+    tagline: string;
     btnContact: string;
     stat1Value: string;
     stat1Label: string;
+    stat1LabelAccent: string;
     stat2Value: string;
     stat2Label: string;
   };
-  servicesPreview: {
+
+  /** Секция «О компании» на главной (наука/технологии/опыт + 3 мини-карточки) */
+  homeAbout: {
     eyebrow: string;
     title: string;
-    subtitle: string;
-    learnMore: string;
-    allBtn: string;
+    brand: string;
+    intro: string;
+    cards: Array<{ icon: string; title: string; text: string }>;
   };
-  stats: {
+
+  /** Секция «Направления деятельности» на главной (6 карточек) */
+  homeDirections: {
+    eyebrow: string;
+    title: string;
+    cards: Array<{ title: string; text: string }>;
+  };
+
+  /** Баннер «Готовы обсудить ваш проект?» */
+  ctaBanner: {
+    title: string;
+    subtitle: string;
+    btn: string;
+  };
+
+  /** Секция «Результаты в цифрах» */
+  results: {
+    eyebrow: string;
+    title: string;
     items: Array<{ value: string; label: string }>;
   };
-  cta: {
-    eyebrow: string;
-    title: string;
-    subtitle: string;
-    points: string[];
-  };
+
   footer: {
-    description: string;
     navTitle: string;
     servicesTitle: string;
     contactsTitle: string;
-    rights: string;
+    caption: string;
+    services: string[];
   };
-  about: {
-    heroTitle: string;
-    heroSubtitle: string;
-    intro1: string;
-    intro2: string;
-    missionTitle: string;
-    missionText: string;
-    valuesTitle: string;
-    values: string[];
-    cardsTitle: string;
-    cards: Array<{ title: string; text: string }>;
-    whyTitle: string;
-    reasons: Array<{ title: string; text: string }>;
+
+  aboutPage: {
+    breadcrumb: string;
+    title: string;
+    brand: string;
+    intro: string;
+    values: Array<{ icon: string; title: string; text: string }>;
   };
-  audience: {
-    eyebrow: string;
+
+  servicesPage: {
+    breadcrumb: string;
     title: string;
     subtitle: string;
-    clients: string[];
-    geoTitle: string;
-    geo: string[];
+    items: Array<{ num: string; title: string; text: string }>;
   };
+
+  solutionsPage: {
+    breadcrumb: string;
+    heroTitle1: string;
+    heroTitle1Accent: string;
+    heroTitle2: string;
+    heroTitle2Accent: string;
+    heroSubtitle: string;
+    intro: string;
+    items: Array<{
+      slug: string;
+      name: string;
+      tagline: string;
+      description: string;
+      points: string[];
+    }>;
+  };
+
+  contactsPage: {
+    breadcrumb: string;
+    title: string;
+    subtitle: string;
+    formTitle: string;
+    howTitle: string;
+    emailLabel: string;
+    phoneLabel: string;
+    officeLabel: string;
+    hoursLabel: string;
+    addressText: string;
+    hoursText: string;
+  };
+
+  form: {
+    namePlaceholder: string;
+    companyPlaceholder: string;
+    emailPlaceholder: string;
+    phonePlaceholder: string;
+    messagePlaceholder: string;
+    submit: string;
+    submitting: string;
+    success: string;
+    successTitle: string;
+    close: string;
+    errorConn: string;
+    errorPhone: string;
+    privacyNote: string;
+  };
+
   metals: {
     eyebrow: string;
     title: string;
@@ -89,63 +138,4 @@ export interface Translation {
       aluminum: string;
     };
   };
-  servicesPage: {
-    heroTitle: string;
-    heroSubtitle: string;
-    detailsBtn: string;
-    notFoundTitle: string;
-    notFoundText: string;
-    contactBtn: string;
-  };
-  solutionsPage: {
-    heroEyebrow: string;
-    heroTitle: string;
-    heroSubtitle: string;
-    intro: string;
-    items: Array<{
-      slug: string;
-      name: string;
-      tagline: string;
-      description: string;
-      points: string[];
-    }>;
-    ctaTitle: string;
-    ctaText: string;
-    contactBtn: string;
-  };
-  contactsPage: {
-    heroTitle: string;
-    heroSubtitle: string;
-    howTitle: string;
-    emailLabel: string;
-    phoneLabel: string;
-    addressLabel: string;
-    hoursLabel: string;
-    addressText: string;
-    hoursText: string;
-    infoTitle: string;
-    infoItems: string[];
-  };
-  form: {
-    title: string;
-    nameLabel: string;
-    namePlaceholder: string;
-    emailLabel: string;
-    emailPlaceholder: string;
-    phoneLabel: string;
-    phonePlaceholder: string;
-    companyLabel: string;
-    companyPlaceholder: string;
-    messageLabel: string;
-    messagePlaceholder: string;
-    submit: string;
-    submitting: string;
-    success: string;
-    successTitle: string;
-    close: string;
-    errorConn: string;
-    errorPhone: string;
-    privacyNote: string;
-  };
-  servicesData: ServiceData[];
 }

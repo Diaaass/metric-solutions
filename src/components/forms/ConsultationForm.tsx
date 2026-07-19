@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
 import { ContactFormData } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -67,7 +66,6 @@ export default function ConsultationForm() {
   };
 
   const handlePhoneBlur = () => {
-    // Пусто (только префикс) — очищаем; иначе валидируем
     if (phoneDigits(formData.phone).length === 0) {
       setFormData((prev) => ({ ...prev, phone: '' }));
       setPhoneError(false);
@@ -131,15 +129,14 @@ export default function ConsultationForm() {
   }, [isSubmitted]);
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-8">
-      <h3 className="text-2xl font-bold mb-6">{t.title}</h3>
-
+    <div>
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-700 font-medium">{error}</p>
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+          <p className="text-red-300 font-medium">{error}</p>
         </div>
       )}
 
+      {/* Раскладка формы из макета: имя|компания, email, телефон, сообщение, кнопка */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div
           aria-hidden="true"
@@ -164,23 +161,38 @@ export default function ConsultationForm() {
             />
           </label>
         </div>
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-secondary-700 mb-2">
-            {t.nameLabel}
-          </label>
-          <Input
-            id="name"
-            name="name"
-            placeholder={t.namePlaceholder}
-            value={formData.name}
-            onChange={handleChange}
-            required
-          />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="name" className="sr-only">
+              {t.namePlaceholder}
+            </label>
+            <Input
+              id="name"
+              name="name"
+              placeholder={t.namePlaceholder}
+              value={formData.name}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="company" className="sr-only">
+              {t.companyPlaceholder}
+            </label>
+            <Input
+              id="company"
+              name="company"
+              placeholder={t.companyPlaceholder}
+              value={formData.company}
+              onChange={handleChange}
+            />
+          </div>
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-secondary-700 mb-2">
-            {t.emailLabel}
+          <label htmlFor="email" className="sr-only">
+            {t.emailPlaceholder}
           </label>
           <Input
             id="email"
@@ -194,8 +206,8 @@ export default function ConsultationForm() {
         </div>
 
         <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-secondary-700 mb-2">
-            {t.phoneLabel}
+          <label htmlFor="phone" className="sr-only">
+            {t.phonePlaceholder}
           </label>
           <Input
             id="phone"
@@ -213,28 +225,15 @@ export default function ConsultationForm() {
             required
           />
           {phoneError && (
-            <p id="phone-error" role="alert" className="mt-2 text-sm text-red-600">
+            <p id="phone-error" role="alert" className="mt-2 text-sm text-red-400">
               {t.errorPhone}
             </p>
           )}
         </div>
 
         <div>
-          <label htmlFor="company" className="block text-sm font-medium text-secondary-700 mb-2">
-            {t.companyLabel}
-          </label>
-          <Input
-            id="company"
-            name="company"
-            placeholder={t.companyPlaceholder}
-            value={formData.company}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="message" className="block text-sm font-medium text-secondary-700 mb-2">
-            {t.messageLabel}
+          <label htmlFor="message" className="sr-only">
+            {t.messagePlaceholder}
           </label>
           <textarea
             id="message"
@@ -248,11 +247,15 @@ export default function ConsultationForm() {
           />
         </div>
 
-        <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full rounded-lg bg-blue-grad py-3.5 text-sm font-medium uppercase tracking-[0.2em] text-white transition-all hover:brightness-110 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+        >
           {isLoading ? t.submitting : t.submit}
-        </Button>
+        </button>
 
-        <p className="text-xs text-secondary-500 text-center">{t.privacyNote}</p>
+        <p className="text-xs font-extralight text-white/60 text-center">{t.privacyNote}</p>
       </form>
 
       {mounted &&
@@ -262,18 +265,18 @@ export default function ConsultationForm() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="thx-title"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]"
             onClick={closeModal}
           >
             <div
-              className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center animate-[scaleIn_0.25s_ease-out]"
+              className="relative rounded-2xl border border-[rgba(26,92,255,0.5)] bg-ink-800 shadow-card-glow max-w-md w-full p-8 text-center animate-[fadeIn_0.25s_ease-out]"
               onClick={(e) => e.stopPropagation()}
             >
               <button
                 type="button"
                 onClick={closeModal}
                 aria-label={t.close}
-                className="absolute top-4 right-4 text-secondary-400 hover:text-secondary-700 transition-colors"
+                className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"
               >
                 <svg
                   width="20"
@@ -290,13 +293,13 @@ export default function ConsultationForm() {
                 </svg>
               </button>
 
-              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-accent-500/15">
                 <svg
                   width="32"
                   height="32"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#16a34a"
+                  stroke="#0088ff"
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -305,14 +308,14 @@ export default function ConsultationForm() {
                 </svg>
               </div>
 
-              <h4 id="thx-title" className="text-2xl font-bold text-secondary-900 mb-2">
+              <h4 id="thx-title" className="mb-2 !text-2xl">
                 {t.successTitle}
               </h4>
-              <p className="text-secondary-600 mb-6">{t.success}</p>
+              <p className="font-extralight text-white/80 mb-6">{t.success}</p>
 
-              <Button type="button" variant="primary" className="w-full" onClick={closeModal}>
+              <button type="button" onClick={closeModal} className="btn-primary w-full">
                 {t.close}
-              </Button>
+              </button>
             </div>
           </div>,
           document.body,

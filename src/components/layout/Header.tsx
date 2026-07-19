@@ -30,21 +30,21 @@ export default function Header() {
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 
   return (
-    <header className="bg-white/85 backdrop-blur-md border-b border-secondary-200 sticky top-0 z-50">
+    <header className="sticky top-0 z-50 border-b border-white/5 bg-ink-950/85 backdrop-blur-md">
       <Container>
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-[72px]">
           <Link href="/" className="flex items-center" aria-label="Metric Solutions — на главную">
             <Image
-              src="/logo.png"
+              src="/logo-figma.svg"
               alt="Metric Solutions"
-              width={216}
-              height={160}
+              width={64}
+              height={66}
               priority
-              className="h-11 w-auto md:h-12"
+              className="h-12 w-auto"
             />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8" aria-label="Основная навигация">
+          <nav className="hidden md:flex items-center gap-10" aria-label="Основная навигация">
             {navigation.map((item) => {
               const active = isActive(item.href);
               return (
@@ -52,10 +52,10 @@ export default function Header() {
                   key={item.href}
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
-                  className={`relative text-sm font-medium tracking-wide transition-colors duration-200 ${
-                    active ? 'text-primary-900' : 'text-secondary-700 hover:text-primary-900'
-                  } after:absolute after:left-0 after:-bottom-1.5 after:h-0.5 after:rounded-full after:bg-metal after:transition-all after:duration-200 ${
-                    active ? 'after:w-full' : 'after:w-0 hover:after:w-full'
+                  className={`text-xs font-extralight tracking-[0.05em] transition-colors duration-200 ${
+                    active
+                      ? 'text-white border-b border-accent-500 pb-1'
+                      : 'text-white/80 hover:text-white'
                   }`}
                 >
                   {item.name}
@@ -64,16 +64,14 @@ export default function Header() {
             })}
           </nav>
 
-          <div className="hidden md:flex items-center gap-1 rounded-md border border-secondary-200 p-0.5">
+          <div className="hidden md:flex items-center gap-1 rounded-full border border-white/15 p-0.5">
             {LANGS.map(({ code, label }) => (
               <button
                 key={code}
                 onClick={() => setLang(code)}
                 aria-pressed={langCode === code}
-                className={`px-3 py-1 rounded font-mono text-xs font-semibold transition-all duration-150 ${
-                  langCode === code
-                    ? 'bg-primary-900 text-white'
-                    : 'text-secondary-600 hover:text-primary-900'
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 ${
+                  langCode === code ? 'bg-blue-grad text-white' : 'text-white/60 hover:text-white'
                 }`}
               >
                 {label}
@@ -83,23 +81,16 @@ export default function Header() {
 
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 rounded-md hover:bg-secondary-100"
+            className="md:hidden p-2 rounded-lg text-white hover:bg-white/10"
             aria-label={isMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
             aria-expanded={isMenuOpen}
           >
-            {isMenuOpen ? (
-              <X className="h-6 w-6 text-primary-900" />
-            ) : (
-              <Menu className="h-6 w-6 text-primary-900" />
-            )}
+            {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
 
         {isMenuOpen && (
-          <nav
-            className="md:hidden py-4 border-t border-secondary-200"
-            aria-label="Мобильная навигация"
-          >
+          <nav className="md:hidden py-4 border-t border-white/10" aria-label="Мобильная навигация">
             {navigation.map((item) => {
               const active = isActive(item.href);
               return (
@@ -108,8 +99,8 @@ export default function Header() {
                   href={item.href}
                   onClick={() => setIsMenuOpen(false)}
                   aria-current={active ? 'page' : undefined}
-                  className={`block py-3 font-medium transition-colors duration-200 ${
-                    active ? 'text-primary-900' : 'text-secondary-700 hover:text-primary-900'
+                  className={`block py-3 font-light transition-colors duration-200 ${
+                    active ? 'text-accent-400' : 'text-white/80 hover:text-white'
                   }`}
                 >
                   {item.name}
@@ -117,16 +108,14 @@ export default function Header() {
               );
             })}
 
-            <div className="flex items-center gap-1 rounded-md border border-secondary-200 p-0.5 w-fit mt-3">
+            <div className="flex items-center gap-1 rounded-full border border-white/15 p-0.5 w-fit mt-3">
               {LANGS.map(({ code, label }) => (
                 <button
                   key={code}
                   onClick={() => setLang(code)}
                   aria-pressed={langCode === code}
-                  className={`px-3 py-1.5 rounded font-mono text-xs font-semibold transition-all duration-150 ${
-                    langCode === code
-                      ? 'bg-primary-900 text-white'
-                      : 'text-secondary-600 hover:text-primary-900'
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150 ${
+                    langCode === code ? 'bg-blue-grad text-white' : 'text-white/60 hover:text-white'
                   }`}
                 >
                   {label}

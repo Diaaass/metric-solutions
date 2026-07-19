@@ -3,15 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Mail, Phone, MapPin } from 'lucide-react';
 import Container from '@/components/ui/Container';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { contacts } from '@/data/contacts';
 
-const FOOTER_SERVICE_COUNT = 6;
-
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
   const { lang } = useLanguage();
 
   const navLinks = [
@@ -22,99 +18,87 @@ export default function Footer() {
   ];
 
   return (
-    <footer className="bg-primary-950 text-white">
-      <Container>
-        <div className="py-14 grid grid-cols-1 md:grid-cols-4 gap-10">
-          <div className="md:col-span-1">
-            <div className="inline-flex rounded-lg bg-white p-3 mb-5">
+    <footer className="bg-ink-950 pt-10">
+      {/* Скруглённая «плита» из макета (rounded-50, rgba(4,33,71,.9)) */}
+      <div className="rounded-t-[50px] bg-ink-800/90">
+        <Container>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 py-14">
+            {/* Лого + подпись */}
+            <div className="flex flex-col items-center md:items-start gap-4">
               <Image
-                src="/logo.png"
+                src="/logo-figma.svg"
                 alt="Metric Solutions"
-                width={800}
-                height={593}
-                className="h-12 w-auto"
+                width={96}
+                height={99}
+                className="h-24 w-auto"
               />
+              <p className="font-card text-base font-light text-white">{lang.footer.caption}</p>
             </div>
-            <p className="text-secondary-300 text-sm leading-relaxed">{lang.footer.description}</p>
-          </div>
 
-          <div>
-            <h4 className="font-mono text-xs uppercase tracking-[0.16em] text-accent-400 mb-4">
-              {lang.footer.navTitle}
-            </h4>
-            <ul className="space-y-2.5 text-sm">
-              {navLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-secondary-300 hover:text-white transition-colors"
+            {/* Навигация */}
+            <div>
+              <h4 className="font-card !text-base font-semibold mb-6">{lang.footer.navTitle}</h4>
+              <ul className="space-y-4">
+                {navLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="font-card text-base font-light text-white hover:text-accent-300 transition-colors"
+                    >
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Направления */}
+            <div>
+              <h4 className="font-card !text-base font-semibold mb-6">
+                {lang.footer.servicesTitle}
+              </h4>
+              <ul className="space-y-4">
+                {lang.footer.services.map((s, i) => (
+                  <li key={i}>
+                    <Link
+                      href="/services"
+                      className="font-card text-base font-light text-white hover:text-accent-300 transition-colors"
+                    >
+                      {s}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Контакты */}
+            <div>
+              <h4 className="font-card !text-base font-semibold mb-6">
+                {lang.footer.contactsTitle}
+              </h4>
+              <ul className="space-y-4 font-card text-base font-light text-white">
+                <li>
+                  <a
+                    href={`mailto:${contacts.email}`}
+                    className="hover:text-accent-300 transition-colors break-all"
                   >
-                    {link.name}
-                  </Link>
+                    {contacts.email}
+                  </a>
                 </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-mono text-xs uppercase tracking-[0.16em] text-accent-400 mb-4">
-              {lang.footer.servicesTitle}
-            </h4>
-            <ul className="space-y-2.5 text-sm">
-              {lang.servicesData.slice(0, FOOTER_SERVICE_COUNT).map((s) => (
-                <li key={s.slug}>
-                  <Link
-                    href="/services"
-                    className="text-secondary-300 hover:text-white transition-colors"
-                  >
-                    {s.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-mono text-xs uppercase tracking-[0.16em] text-accent-400 mb-4">
-              {lang.footer.contactsTitle}
-            </h4>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-start gap-2.5">
-                <Mail className="h-5 w-5 text-accent-400 flex-shrink-0 mt-0.5" />
-                <a
-                  href={`mailto:${contacts.email}`}
-                  className="text-secondary-300 hover:text-white transition-colors break-all"
-                >
-                  {contacts.email}
-                </a>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <Phone className="h-5 w-5 text-accent-400 flex-shrink-0 mt-0.5" />
-                {contacts.phone ? (
+                <li>
                   <a
                     href={`tel:${contacts.phone}`}
-                    className="text-secondary-300 hover:text-white transition-colors"
+                    className="hover:text-accent-300 transition-colors"
                   >
                     {contacts.phoneDisplay}
                   </a>
-                ) : (
-                  <span className="text-secondary-400">{contacts.phoneDisplay}</span>
-                )}
-              </li>
-              <li className="flex items-start gap-2.5">
-                <MapPin className="h-5 w-5 text-accent-400 flex-shrink-0 mt-0.5" />
-                <span className="text-secondary-300">{lang.contactsPage.addressText}</span>
-              </li>
-            </ul>
+                </li>
+                <li className="max-w-[220px]">{lang.contactsPage.addressText}</li>
+              </ul>
+            </div>
           </div>
-        </div>
-
-        <div className="border-t border-white/10 py-6">
-          <p className="text-sm text-secondary-400">
-            &copy; {currentYear} ТОО «Metric Solutions». {lang.footer.rights}
-          </p>
-        </div>
-      </Container>
+        </Container>
+      </div>
     </footer>
   );
 }

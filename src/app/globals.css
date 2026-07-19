@@ -4,42 +4,36 @@
 
 @layer base {
   body {
-    @apply bg-white text-secondary-900 font-sans antialiased;
+    @apply bg-ink-950 text-white font-sans antialiased;
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    /* Цвет наследуется от родителя: тёмный на светлом фоне, белый на тёмных секциях (CTA, футер) */
-    @apply font-sans font-bold;
-    letter-spacing: -0.025em;
-    color: inherit;
-  }
-
+  /* Дисплейные заголовки (hero, «КОНТАКТЫ», «NOMADLAB…») — капс */
   h1 {
-    @apply text-4xl md:text-5xl lg:text-[3.5rem];
-    line-height: 1.08;
+    @apply font-display font-bold uppercase text-white text-5xl md:text-6xl lg:text-[88px];
+    letter-spacing: -0.02em;
+    line-height: 1;
   }
 
+  /* Секционные заголовки — Geologica SemiBold, обычный регистр (34px в макете) */
   h2 {
-    @apply text-3xl md:text-4xl;
-    line-height: 1.15;
+    @apply font-sans font-semibold text-white text-2xl md:text-[34px];
+    letter-spacing: -0.03em;
+    line-height: 1.25;
   }
 
-  h3 {
-    @apply text-xl md:text-2xl;
+  h3,
+  h4 {
+    @apply font-sans font-semibold text-white text-lg md:text-xl;
+    letter-spacing: -0.03em;
     line-height: 1.3;
   }
 
   p {
-    line-height: 1.7;
+    line-height: 1.65;
   }
 
   ::selection {
-    @apply bg-accent-600/20 text-primary-900;
+    @apply bg-accent-500/30 text-white;
   }
 }
 
@@ -48,49 +42,37 @@
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
-  /* Моно-подпись над заголовками с металлической полоской */
+  /* Надпись-метка: дисплейный капс с синим градиентом (Bebas 24 в макете) */
   .eyebrow {
-    @apply inline-flex items-center gap-2.5 font-mono text-xs uppercase tracking-[0.16em] text-accent-700 font-medium;
+    @apply font-display text-xl md:text-2xl font-normal uppercase tracking-tight bg-blue-grad bg-clip-text text-transparent;
   }
 
-  .eyebrow::before {
-    content: '';
-    @apply inline-block h-[3px] w-8 rounded-full bg-metal;
+  /* Синий градиентный текст */
+  .text-grad {
+    @apply bg-blue-grad bg-clip-text text-transparent;
   }
 
-  /* Основная кнопка — тёмно-синий (бренд) */
+  /* Кнопка-пилюля с градиентом и свечением (343x64 в макете) */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 bg-primary-900 text-white px-6 py-3 rounded-lg font-semibold text-[15px]
-           hover:bg-primary-800 transition-colors duration-200
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 bg-blue-grad text-white px-10 py-4 rounded-[30px] font-medium text-[15px] tracking-wide
+           shadow-glow transition-all duration-200 hover:brightness-110
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 bg-secondary-800 text-white px-6 py-3 rounded-lg font-semibold text-[15px]
-           hover:bg-secondary-700 transition-colors duration-200
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-500 focus-visible:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 bg-white/5 text-white px-10 py-4 rounded-[30px] font-medium text-[15px]
+           border border-white/15 transition-colors duration-200 hover:bg-white/10
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950;
   }
 
-  .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 border border-secondary-300 bg-white text-secondary-800 px-6 py-3 rounded-lg font-semibold text-[15px]
-           hover:border-primary-700 hover:text-primary-800 transition-colors duration-200
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2;
-  }
-
-  /* Тонкая металлическая акцентная полоса */
-  .metal-bar {
-    @apply bg-metal;
-  }
-
-  /* Чистая корпоративная карточка */
+  /* Карточка из макета: прозрачная, рамка rgba(26,92,255,.5), синее свечение */
   .card {
-    @apply relative bg-white rounded-xl p-6 border border-secondary-200
-           transition-all duration-300
-           hover:border-secondary-300 hover:shadow-card hover:-translate-y-0.5;
+    @apply relative rounded-2xl border border-[rgba(26,92,255,0.5)] bg-transparent p-7 shadow-card-glow
+           transition-all duration-300 hover:border-accent-500/80;
   }
 
   .input-field {
-    @apply w-full px-4 py-3 bg-white border border-secondary-300 rounded-lg text-secondary-900 placeholder:text-secondary-400
+    @apply w-full px-4 py-3 rounded-lg bg-white/[0.04] border border-[rgba(26,92,255,0.4)] text-white placeholder:text-secondary-400
            focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent
            transition-all duration-200;
   }
@@ -99,26 +81,19 @@
     @apply py-16 md:py-24;
   }
 
-  /* Тонкая техническая сетка для светлых секций */
-  .bg-grid {
-    background-image:
-      linear-gradient(to right, rgba(15, 34, 64, 0.04) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(15, 34, 64, 0.04) 1px, transparent 1px);
-    background-size: 56px 56px;
-  }
-
+  /* Техническая сетка */
   .bg-grid-dark {
     background-image:
-      linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-    background-size: 56px 56px;
+      linear-gradient(to right, rgba(90, 140, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(90, 140, 255, 0.05) 1px, transparent 1px);
+    background-size: 80px 80px;
   }
 }
 
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(24px);
   }
   to {
     opacity: 1;
@@ -136,12 +111,12 @@
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.7s ease-out forwards;
+  animation: fadeIn 0.8s ease-out forwards;
   opacity: 0;
 }
 

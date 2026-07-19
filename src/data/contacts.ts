@@ -1,7 +1,6 @@
 export const contacts = {
   email: 'Support@metricsolutions.kz',
-  // Телефон в брифе помечен «уточняется» — заполнить реальным номером перед запуском.
-  phone: '',
-  phoneDisplay: 'Уточняется',
-  // WhatsApp / Telegram / соцсети в брифе не заполнены — добавить при получении.
+  // Телефон из макета Figma (футер)
+  phone: '+77053792135',
+  phoneDisplay: '+7 705 379 21 35',
 } as const;

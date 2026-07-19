@@ -27,7 +27,6 @@ export default function MetalPrices() {
     return () => controller.abort();
   }, []);
 
-  // Источник не подключён или данных нет — секция не показывается.
   if (!data || !data.available || !data.metals?.length) return null;
 
   const locale = langCode === 'kz' ? 'kk-KZ' : 'ru-RU';
@@ -48,36 +47,35 @@ export default function MetalPrices() {
   }
 
   return (
-    <section className="section-padding bg-secondary-50 border-y border-secondary-200">
+    <section className="section-padding bg-ink-950 relative overflow-hidden">
+      <div className="absolute inset-0 bg-grid-dark opacity-40" aria-hidden="true" />
       <Container>
-        <div className="max-w-2xl mb-10">
+        <div className="relative">
           <p className="eyebrow mb-4">{t.eyebrow}</p>
-          <h2 className="font-bold mb-3">{t.title}</h2>
-          <p className="text-lg text-secondary-600">{t.subtitle}</p>
-        </div>
+          <h2 className="mb-3">{t.title}</h2>
+          <p className="text-lg text-secondary-300 max-w-2xl mb-10">{t.subtitle}</p>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-px bg-secondary-200 border border-secondary-200 rounded-lg overflow-hidden">
-          {data.metals.map((m) => (
-            <div key={m.key} className="bg-white p-6">
-              <div className="text-sm font-medium text-secondary-500 mb-2">{t.names[m.key]}</div>
-              <div className="font-mono text-2xl font-semibold text-primary-900 tabular-nums">
-                {priceFmt.format(m.price)}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {data.metals.map((m) => (
+              <div key={m.key} className="card !p-6">
+                <div className="text-sm font-medium text-secondary-400 mb-2">{t.names[m.key]}</div>
+                <div className="font-display text-3xl font-bold text-white tabular-nums">
+                  {priceFmt.format(m.price)}
+                </div>
+                <div className="text-xs text-accent-500 mt-1">{data.currency ?? 'USD'}</div>
               </div>
-              <div className="font-mono text-xs text-secondary-400 mt-1">
-                {data.currency ?? 'USD'}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <p className="mt-5 text-xs text-secondary-400">
-          {updated && (
-            <>
-              {t.updatedLabel}: {updated} · {t.sourceLabel}: metals.dev ·{' '}
-            </>
-          )}
-          {t.disclaimer}
-        </p>
+          <p className="mt-5 text-xs text-secondary-500">
+            {updated && (
+              <>
+                {t.updatedLabel}: {updated} · {t.sourceLabel}: metals.dev ·{' '}
+              </>
+            )}
+            {t.disclaimer}
+          </p>
+        </div>
       </Container>
     </section>
   );

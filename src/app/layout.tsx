@@ -1,21 +1,31 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
+import { Oswald, Geologica, Montserrat } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 
-const plexSans = IBM_Plex_Sans({
+// Узкий гротеск-капс с кириллицей — дисплейные заголовки (аналог Bebas Neue из макета)
+const oswald = Oswald({
   weight: ['400', '500', '600', '700'],
   subsets: ['latin', 'cyrillic'],
-  variable: '--font-plex-sans',
+  variable: '--font-display',
   display: 'swap',
 });
 
-const plexMono = IBM_Plex_Mono({
-  weight: ['400', '500', '600'],
+// Основной текст (Geologica из макета)
+const geologica = Geologica({
+  weight: ['200', '300', '400', '500', '600'],
   subsets: ['latin', 'cyrillic'],
-  variable: '--font-plex-mono',
+  variable: '--font-sans',
+  display: 'swap',
+});
+
+// Текст карточек и футера (Montserrat из макета)
+const montserrat = Montserrat({
+  weight: ['300', '500', '600', '700'],
+  subsets: ['latin', 'cyrillic'],
+  variable: '--font-card',
   display: 'swap',
 });
 
@@ -30,7 +40,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
-      <body className={`${plexSans.variable} ${plexMono.variable} font-sans`}>
+      <body className={`${oswald.variable} ${geologica.variable} ${montserrat.variable} font-sans`}>
         <LanguageProvider>
           <Header />
           <main className="min-h-screen">{children}</main>

@@ -3,7 +3,7 @@
 import React from 'react';
 import Container from '@/components/ui/Container';
 import ConsultationForm from '@/components/forms/ConsultationForm';
-import { Mail, Phone, MapPin, Clock } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { contacts } from '@/data/contacts';
 
@@ -11,14 +11,14 @@ export default function ContactsPage() {
   const { lang } = useLanguage();
   const t = lang.contactsPage;
 
-  const contactItems = [
+  const cards: Array<{ Icon: LucideIcon; label: string; content: React.ReactNode }> = [
     {
       Icon: Mail,
       label: t.emailLabel,
       content: (
         <a
           href={`mailto:${contacts.email}`}
-          className="text-accent-600 hover:text-accent-700 break-all"
+          className="hover:text-accent-300 transition-colors break-all"
         >
           {contacts.email}
         </a>
@@ -27,84 +27,75 @@ export default function ContactsPage() {
     {
       Icon: Phone,
       label: t.phoneLabel,
-      content: contacts.phone ? (
-        <a href={`tel:${contacts.phone}`} className="text-accent-600 hover:text-accent-700">
+      content: (
+        <a href={`tel:${contacts.phone}`} className="hover:text-accent-300 transition-colors">
           {contacts.phoneDisplay}
         </a>
-      ) : (
-        <span className="text-secondary-500">{contacts.phoneDisplay}</span>
       ),
     },
     {
       Icon: MapPin,
-      label: t.addressLabel,
-      content: <p className="text-secondary-700">{t.addressText}</p>,
+      label: t.officeLabel,
+      content: <span>{t.addressText}</span>,
     },
     {
       Icon: Clock,
       label: t.hoursLabel,
-      content: <p className="text-secondary-700 whitespace-pre-line">{t.hoursText}</p>,
+      content: <span>{t.hoursText}</span>,
     },
   ];
 
   return (
-    <div className="bg-white">
-      <section className="relative bg-secondary-50 border-b border-secondary-200">
-        <div className="absolute inset-0 bg-grid opacity-60" aria-hidden="true" />
-        <Container>
-          <div className="relative py-16 md:py-24 max-w-3xl">
-            <p className="eyebrow mb-5 animate-fade-in-up">{lang.nav.contacts}</p>
-            <h1 className="mb-6 animate-fade-in-up delay-100">{t.heroTitle}</h1>
-            <p className="text-lg md:text-xl text-secondary-600 leading-relaxed animate-fade-in-up delay-200">
-              {t.heroSubtitle}
-            </p>
+    <div className="relative overflow-hidden bg-ink-950">
+      <div className="absolute inset-0 bg-grid-dark" aria-hidden="true" />
+      <div
+        className="pointer-events-none absolute left-1/2 top-[20%] h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-accent-500/10 blur-[150px]"
+        aria-hidden="true"
+      />
+
+      <Container>
+        <div className="relative pt-14 md:pt-20 pb-6">
+          <p className="text-lg md:text-xl font-extralight text-white tracking-tight mb-5 animate-fade-in">
+            {t.breadcrumb}
+          </p>
+          <h1 className="mb-5 animate-fade-in-up">{t.title}</h1>
+          <p className="max-w-2xl text-base md:text-lg font-extralight text-white leading-relaxed tracking-tight animate-fade-in-up delay-100">
+            {t.subtitle}
+          </p>
+        </div>
+
+        {/* Оставить заявку */}
+        <div className="relative pt-10 pb-6 animate-fade-in-up delay-200">
+          <p className="eyebrow mb-8">{t.formTitle}</p>
+          <div className="max-w-4xl">
+            <ConsultationForm />
           </div>
-        </Container>
-      </section>
+        </div>
 
-      <section className="section-padding bg-secondary-50 bg-grid">
-        <Container>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div className="animate-fade-in-up delay-100">
-              <h2 className="text-2xl md:text-3xl font-bold mb-8 text-primary-900">{t.howTitle}</h2>
-
-              <div className="space-y-5 mb-10">
-                {contactItems.map(({ Icon, label, content }, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-4 bg-white border border-secondary-200 rounded-lg p-5 animate-fade-in-up"
-                    style={{ animationDelay: `${(i + 1) * 80}ms` }}
-                  >
-                    <div className="w-11 h-11 bg-primary-50 rounded-md flex items-center justify-center flex-shrink-0 text-primary-700">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold mb-1 text-primary-900">{label}</h3>
-                      {content}
-                    </div>
-                  </div>
-                ))}
+        {/* Как связаться с нами */}
+        <div className="relative pt-14 pb-24">
+          <p className="eyebrow mb-8 animate-fade-in">{t.howTitle}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+            {cards.map(({ Icon, label, content }, i) => (
+              <div
+                key={i}
+                className="card !p-6 flex items-start gap-5 animate-fade-in-up"
+                style={{ animationDelay: `${(i + 1) * 80}ms` }}
+              >
+                <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-blue-grad text-white shadow-glow">
+                  <Icon className="h-5 w-5" strokeWidth={1.8} />
+                </span>
+                <span>
+                  <h3 className="!text-lg mb-1.5">{label}</h3>
+                  <span className="block text-sm font-extralight text-white/90 leading-relaxed">
+                    {content}
+                  </span>
+                </span>
               </div>
-
-              <div className="border-l-2 border-accent-500 bg-white p-6 rounded-r-lg animate-fade-in delay-400">
-                <h3 className="font-semibold mb-3 text-primary-900">{t.infoTitle}</h3>
-                <ul className="space-y-2 text-sm text-secondary-700">
-                  {t.infoItems.map((item, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="text-accent-500 font-bold leading-6">•</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <div className="animate-fade-in-up delay-200">
-              <ConsultationForm />
-            </div>
+            ))}
           </div>
-        </Container>
-      </section>
+        </div>
+      </Container>
     </div>
   );
 }
