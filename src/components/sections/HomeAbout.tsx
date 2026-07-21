@@ -26,7 +26,7 @@ export default function HomeAbout({ t }: { t: Translation['homeAbout'] }) {
           </div>
 
           {/* 3 узкие карточки (как в макете) */}
-          <div className="lg:col-span-2 grid grid-cols-3 gap-4 animate-fade-in-up delay-200">
+          <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fade-in-up delay-200">
             {t.cards.map((card, i) => {
               const Icon = icons[card.icon] ?? CheckCircle;
               return (
