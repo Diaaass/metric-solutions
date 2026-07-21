@@ -1,13 +1,8 @@
-'use client';
-
 import React from 'react';
 import Container from '@/components/ui/Container';
-import { useLanguage } from '@/contexts/LanguageContext';
+import type { Translation } from '@/i18n';
 
-export default function Stats() {
-  const { lang } = useLanguage();
-  const t = lang.results;
-
+export default function Stats({ t }: { t: Translation['results'] }) {
   return (
     <section className="relative overflow-hidden bg-ink-950 section-padding">
       <div className="absolute inset-0 bg-grid-dark" aria-hidden="true" />

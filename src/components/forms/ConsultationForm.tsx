@@ -4,12 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Input from '@/components/ui/Input';
 import { ContactFormData } from '@/types';
-import { useLanguage } from '@/contexts/LanguageContext';
+import type { Translation } from '@/i18n';
 
-export default function ConsultationForm() {
-  const { lang } = useLanguage();
-  const t = lang.form;
-
+export default function ConsultationForm({ t }: { t: Translation['form'] }) {
   const [formData, setFormData] = useState<ContactFormData>({
     name: '',
     email: '',

@@ -1,19 +1,23 @@
-'use client';
-
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Container from '@/components/ui/Container';
-import { useLanguage } from '@/contexts/LanguageContext';
+import TechBackdrop from '@/components/ui/TechBackdrop';
+import type { Translation } from '@/i18n';
 
-export default function ServicesPreview() {
-  const { lang } = useLanguage();
-  const t = lang.homeDirections;
-  const banner = lang.ctaBanner;
-
+export default function ServicesPreview({
+  t,
+  banner,
+  base,
+}: {
+  t: Translation['homeDirections'];
+  banner: Translation['ctaBanner'];
+  base: string;
+}) {
   return (
     <section className="relative overflow-hidden bg-ink-950 section-padding">
       <div className="absolute inset-0 bg-grid-dark" aria-hidden="true" />
+      <TechBackdrop />
       <Container>
         <div className="relative">
           <p className="eyebrow mb-4 animate-fade-in">{t.eyebrow}</p>
@@ -60,7 +64,7 @@ export default function ServicesPreview() {
                   </p>
                 </div>
                 <Link
-                  href="/contacts"
+                  href={`${base}/contacts`}
                   className="inline-flex items-center justify-center rounded-[30px] bg-blue-grad px-8 py-2.5 text-sm font-medium text-white transition-all hover:brightness-110 flex-shrink-0"
                 >
                   {banner.btn}

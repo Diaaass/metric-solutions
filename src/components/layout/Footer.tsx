@@ -1,20 +1,28 @@
-'use client';
-
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Container from '@/components/ui/Container';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { contacts } from '@/data/contacts';
+import type { Lang, Translation } from '@/i18n';
 
-export default function Footer() {
-  const { lang } = useLanguage();
+export default function Footer({
+  nav,
+  footer,
+  address,
+  lang,
+}: {
+  nav: Translation['nav'];
+  footer: Translation['footer'];
+  address: string;
+  lang: Lang;
+}) {
+  const base = lang === 'kz' ? '/kz' : '';
 
   const navLinks = [
-    { name: lang.nav.about, href: '/about' },
-    { name: lang.nav.services, href: '/services' },
-    { name: lang.nav.solutions, href: '/solutions' },
-    { name: lang.nav.contacts, href: '/contacts' },
+    { name: nav.about, href: `${base}/about` },
+    { name: nav.services, href: `${base}/services` },
+    { name: nav.solutions, href: `${base}/solutions` },
+    { name: nav.contacts, href: `${base}/contacts` },
   ];
 
   return (
@@ -32,12 +40,12 @@ export default function Footer() {
                 height={99}
                 className="h-24 w-auto"
               />
-              <p className="font-card text-base font-light text-white">{lang.footer.caption}</p>
+              <p className="font-card text-base font-light text-white">{footer.caption}</p>
             </div>
 
             {/* Навигация */}
             <div>
-              <h4 className="font-card !text-base font-semibold mb-6">{lang.footer.navTitle}</h4>
+              <h4 className="font-card !text-base font-semibold mb-6">{footer.navTitle}</h4>
               <ul className="space-y-4">
                 {navLinks.map((link) => (
                   <li key={link.href}>
@@ -54,14 +62,12 @@ export default function Footer() {
 
             {/* Направления */}
             <div>
-              <h4 className="font-card !text-base font-semibold mb-6">
-                {lang.footer.servicesTitle}
-              </h4>
+              <h4 className="font-card !text-base font-semibold mb-6">{footer.servicesTitle}</h4>
               <ul className="space-y-4">
-                {lang.footer.services.map((s, i) => (
+                {footer.services.map((s, i) => (
                   <li key={i}>
                     <Link
-                      href="/services"
+                      href={`${base}/services`}
                       className="font-card text-base font-light text-white hover:text-accent-300 transition-colors"
                     >
                       {s}
@@ -73,9 +79,7 @@ export default function Footer() {
 
             {/* Контакты */}
             <div>
-              <h4 className="font-card !text-base font-semibold mb-6">
-                {lang.footer.contactsTitle}
-              </h4>
+              <h4 className="font-card !text-base font-semibold mb-6">{footer.contactsTitle}</h4>
               <ul className="space-y-4 font-card text-base font-light text-white">
                 <li>
                   <a
@@ -93,7 +97,7 @@ export default function Footer() {
                     {contacts.phoneDisplay}
                   </a>
                 </li>
-                <li className="max-w-[220px]">{lang.contactsPage.addressText}</li>
+                <li className="max-w-[220px]">{address}</li>
               </ul>
             </div>
           </div>

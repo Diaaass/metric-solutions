@@ -10,7 +10,7 @@
   /* Дисплейные заголовки (hero, «КОНТАКТЫ», «NOMADLAB…») — капс */
   h1 {
     @apply font-display font-bold uppercase text-white text-5xl md:text-6xl lg:text-[88px];
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     line-height: 1;
   }
 

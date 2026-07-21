@@ -1,18 +1,26 @@
-'use client';
-
 import React from 'react';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import Container from '@/components/ui/Container';
 import { Container as ContainerIcon, Factory, CheckCircle, type LucideIcon } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { translations } from '@/i18n';
+import { buildMetadata, isLang } from '@/i18n/seo';
 
 const solutionIcons: Record<string, LucideIcon> = {
   nomadlab: ContainerIcon,
   'nomad-pilot-plant': Factory,
 };
 
-export default function SolutionsPage() {
-  const { lang } = useLanguage();
-  const t = lang.solutionsPage;
+type Props = { params: { lang: string } };
+
+export function generateMetadata({ params }: Props): Metadata {
+  if (!isLang(params.lang)) return {};
+  return buildMetadata(params.lang, 'solutions');
+}
+
+export default function SolutionsPage({ params }: Props) {
+  if (!isLang(params.lang)) notFound();
+  const t = translations[params.lang].solutionsPage;
 
   return (
     <div className="relative overflow-hidden bg-ink-950">
@@ -24,7 +32,7 @@ export default function SolutionsPage() {
 
       <Container>
         <div className="relative pt-14 md:pt-20 pb-10">
-          <p className="text-lg md:text-xl font-extralight text-white tracking-tight mb-5 animate-fade-in">
+          <p className="text-lg md:text-xl font-thin text-white tracking-[-0.03em] mb-5 animate-fade-in">
             {t.breadcrumb}
           </p>
           {/* Дисплейный заголовок с градиентными частями (как в макете) */}
@@ -34,10 +42,10 @@ export default function SolutionsPage() {
             <br />
             {t.heroTitle2} <span className="text-grad">{t.heroTitle2Accent}</span>
           </h1>
-          <p className="max-w-2xl text-base md:text-lg font-extralight text-white leading-relaxed tracking-tight mb-8 animate-fade-in-up delay-100">
+          <p className="max-w-2xl text-base md:text-lg font-thin text-white leading-relaxed tracking-[-0.03em] mb-8 animate-fade-in-up delay-100">
             {t.heroSubtitle}
           </p>
-          <p className="max-w-2xl text-base md:text-lg font-extralight text-white leading-relaxed tracking-tight animate-fade-in-up delay-200">
+          <p className="max-w-2xl text-base md:text-lg font-thin text-white leading-relaxed tracking-[-0.03em] animate-fade-in-up delay-200">
             {t.intro}
           </p>
         </div>

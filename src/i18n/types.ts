@@ -138,4 +138,13 @@ export interface Translation {
       aluminum: string;
     };
   };
+
+  /** SEO-метаданные по страницам (title + description на каждую из 5 страниц) */
+  seo: {
+    home: { title: string; description: string };
+    about: { title: string; description: string };
+    services: { title: string; description: string };
+    solutions: { title: string; description: string };
+    contacts: { title: string; description: string };
+  };
 }
