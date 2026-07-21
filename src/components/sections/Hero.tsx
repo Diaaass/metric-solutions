@@ -1,7 +1,7 @@
 import React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import Container from '@/components/ui/Container';
+import HeroCubes from '@/components/hero/HeroCubes';
 import type { Translation } from '@/i18n';
 
 export default function Hero({ t, base }: { t: Translation['hero']; base: string }) {
@@ -14,19 +14,13 @@ export default function Hero({ t, base }: { t: Translation['hero']; base: string
         aria-hidden="true"
       />
 
-      {/* 3D-кластер справа сверху (как в макете — наезжает на верх) */}
+      {/* 3D-кластер справа сверху (как в макете — наезжает на верх).
+          Внутри: статичный постер (LCP) + ленивая three-сцена с кроссфейдом. */}
       <div
         className="pointer-events-none absolute right-[-4%] top-[-12%] hidden w-[46%] lg:block"
         aria-hidden="true"
       >
-        <Image
-          src="/hero-3d.png"
-          alt=""
-          width={1200}
-          height={800}
-          priority
-          className="h-auto w-full object-contain"
-        />
+        <HeroCubes />
       </div>
 
       <Container>
