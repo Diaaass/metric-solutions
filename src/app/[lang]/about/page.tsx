@@ -1,6 +1,6 @@
-'use client';
-
 import React from 'react';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import Container from '@/components/ui/Container';
 import {
   Shield,
@@ -12,7 +12,8 @@ import {
   Clock,
   type LucideIcon,
 } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { translations } from '@/i18n';
+import { buildMetadata, isLang } from '@/i18n/seo';
 
 const icons: Record<string, LucideIcon> = {
   Shield,
@@ -42,9 +43,16 @@ function ValueBlock({ item, big }: { item: ValueItem; big?: boolean }) {
   );
 }
 
-export default function AboutPage() {
-  const { lang } = useLanguage();
-  const t = lang.aboutPage;
+type Props = { params: { lang: string } };
+
+export function generateMetadata({ params }: Props): Metadata {
+  if (!isLang(params.lang)) return {};
+  return buildMetadata(params.lang, 'about');
+}
+
+export default function AboutPage({ params }: Props) {
+  if (!isLang(params.lang)) notFound();
+  const t = translations[params.lang].aboutPage;
 
   // Раскладка из макета: 2 больших + 2 больших, затем 3 в ряд
   const bigValues = t.values.slice(0, 4);

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Container from '@/components/ui/Container';
-import { useLanguage } from '@/contexts/LanguageContext';
+import type { Lang, Translation } from '@/i18n';
 
 type MetalKey = 'gold' | 'silver' | 'copper' | 'zinc' | 'aluminum';
 type MetalQuote = { key: MetalKey; price: number };
@@ -13,9 +13,7 @@ type MetalsData = {
   metals?: MetalQuote[];
 };
 
-export default function MetalPrices() {
-  const { lang, langCode } = useLanguage();
-  const t = lang.metals;
+export default function MetalPrices({ t, langCode }: { t: Translation['metals']; langCode: Lang }) {
   const [data, setData] = useState<MetalsData | null>(null);
 
   useEffect(() => {

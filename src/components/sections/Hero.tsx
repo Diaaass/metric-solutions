@@ -1,15 +1,10 @@
-'use client';
-
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Container from '@/components/ui/Container';
-import { useLanguage } from '@/contexts/LanguageContext';
+import type { Translation } from '@/i18n';
 
-export default function Hero() {
-  const { lang } = useLanguage();
-  const t = lang.hero;
-
+export default function Hero({ t, base }: { t: Translation['hero']; base: string }) {
   return (
     <section className="relative overflow-hidden bg-ink-950">
       <div className="absolute inset-0 bg-grid-dark" aria-hidden="true" />
@@ -47,7 +42,7 @@ export default function Hero() {
           </p>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-6 animate-fade-in-up delay-300">
-            <Link href="/contacts" className="btn-primary min-w-[280px]">
+            <Link href={`${base}/contacts`} className="btn-primary min-w-[280px]">
               {t.btnContact}
             </Link>
             <p className="text-[13px] font-extralight text-white/90 leading-snug max-w-[260px]">

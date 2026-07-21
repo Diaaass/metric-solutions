@@ -1,12 +1,20 @@
-'use client';
-
 import React from 'react';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import Container from '@/components/ui/Container';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { translations } from '@/i18n';
+import { buildMetadata, isLang } from '@/i18n/seo';
 
-export default function ServicesPage() {
-  const { lang } = useLanguage();
-  const t = lang.servicesPage;
+type Props = { params: { lang: string } };
+
+export function generateMetadata({ params }: Props): Metadata {
+  if (!isLang(params.lang)) return {};
+  return buildMetadata(params.lang, 'services');
+}
+
+export default function ServicesPage({ params }: Props) {
+  if (!isLang(params.lang)) notFound();
+  const t = translations[params.lang].servicesPage;
 
   return (
     <div className="relative overflow-hidden bg-ink-950">

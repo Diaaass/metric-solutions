@@ -1,9 +1,7 @@
-'use client';
-
 import React from 'react';
 import Container from '@/components/ui/Container';
 import { CheckCircle, History, CheckSquare, type LucideIcon } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import type { Translation } from '@/i18n';
 
 const icons: Record<string, LucideIcon> = {
   CheckCircle,
@@ -11,10 +9,7 @@ const icons: Record<string, LucideIcon> = {
   CheckSquare,
 };
 
-export default function HomeAbout() {
-  const { lang } = useLanguage();
-  const t = lang.homeAbout;
-
+export default function HomeAbout({ t }: { t: Translation['homeAbout'] }) {
   return (
     <section className="relative overflow-hidden bg-ink-950 section-padding">
       <div className="absolute inset-0 bg-grid-dark" aria-hidden="true" />

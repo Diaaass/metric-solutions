@@ -1,15 +1,24 @@
-'use client';
-
 import React from 'react';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import Container from '@/components/ui/Container';
 import ConsultationForm from '@/components/forms/ConsultationForm';
 import { Mail, Phone, MapPin, Clock, type LucideIcon } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { translations } from '@/i18n';
+import { buildMetadata, isLang } from '@/i18n/seo';
 import { contacts } from '@/data/contacts';
 
-export default function ContactsPage() {
-  const { lang } = useLanguage();
-  const t = lang.contactsPage;
+type Props = { params: { lang: string } };
+
+export function generateMetadata({ params }: Props): Metadata {
+  if (!isLang(params.lang)) return {};
+  return buildMetadata(params.lang, 'contacts');
+}
+
+export default function ContactsPage({ params }: Props) {
+  if (!isLang(params.lang)) notFound();
+  const dict = translations[params.lang];
+  const t = dict.contactsPage;
 
   const cards: Array<{ Icon: LucideIcon; label: string; content: React.ReactNode }> = [
     {
@@ -68,7 +77,7 @@ export default function ContactsPage() {
         <div className="relative pt-10 pb-6 animate-fade-in-up delay-200">
           <p className="eyebrow mb-8">{t.formTitle}</p>
           <div className="max-w-4xl">
-            <ConsultationForm />
+            <ConsultationForm t={dict.form} />
           </div>
         </div>
 
