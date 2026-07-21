@@ -2,6 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Container from '@/components/ui/Container';
+import { FlaskConical } from 'lucide-react';
 import { translations } from '@/i18n';
 import { buildMetadata, isLang } from '@/i18n/seo';
 
@@ -44,13 +45,12 @@ export default function ServicesPage({ params }: Props) {
               className="flex flex-col items-center text-center animate-fade-in-up"
               style={{ animationDelay: `${(i + 1) * 80}ms` }}
             >
-              <span
-                className="font-display text-[96px] md:text-[110px] font-bold leading-none text-grad tracking-[-0.12em] drop-shadow-[0_0_28px_rgba(0,120,255,0.45)] select-none"
+              <FlaskConical
+                className="h-14 w-14 text-accent-400 drop-shadow-icon mb-5"
+                strokeWidth={1.4}
                 aria-hidden="true"
-              >
-                {item.num}
-              </span>
-              <h3 className="!text-xl mt-4 mb-3 tracking-tight">{item.title}</h3>
+              />
+              <h3 className="!text-xl mb-3 tracking-tight">{item.title}</h3>
               <p className="max-w-md text-[15px] font-extralight text-white/95 leading-relaxed tracking-tight">
                 {item.text}
               </p>
