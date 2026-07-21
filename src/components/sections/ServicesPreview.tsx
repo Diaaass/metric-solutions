@@ -2,6 +2,7 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import Container from '@/components/ui/Container';
+import TechBackdrop from '@/components/ui/TechBackdrop';
 import type { Translation } from '@/i18n';
 
 export default function ServicesPreview({
@@ -16,6 +17,7 @@ export default function ServicesPreview({
   return (
     <section className="relative overflow-hidden bg-ink-950 section-padding">
       <div className="absolute inset-0 bg-grid-dark" aria-hidden="true" />
+      <TechBackdrop />
       <Container>
         <div className="relative">
           <p className="eyebrow mb-4 animate-fade-in">{t.eyebrow}</p>

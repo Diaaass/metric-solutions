@@ -2,50 +2,19 @@ import React from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Globe } from 'lucide-react';
 import Container from '@/components/ui/Container';
+import TechBackdrop from '@/components/ui/TechBackdrop';
 import HeroCubes from '@/components/hero/HeroCubes';
 import type { Translation } from '@/i18n';
-
-// Декоративные каркасные кубики из макета (80x80, координаты на холсте 1440x1061).
-// Позиционируются в % от hero-области, очень приглушённые, только на lg+.
-const DECO_CUBES: { left: number; top: number; size: number }[] = [
-  { left: 81.7, top: 24, size: 80 },
-  { left: 36.7, top: 16, size: 80 },
-  { left: 31.1, top: 24, size: 80 },
-  { left: 14.4, top: 70, size: 80 },
-  { left: 25.6, top: 77, size: 80 },
-  { left: 59.2, top: 77, size: 80 },
-];
-
-function DecoCube({ left, top, size }: { left: number; top: number; size: number }) {
-  return (
-    <svg
-      className="absolute text-accent-400/[0.10]"
-      style={{ left: `${left}%`, top: `${top}%`, width: size, height: size }}
-      viewBox="0 0 100 100"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={3}
-      aria-hidden="true"
-    >
-      <path d="M50 8 L85 28 L85 68 L50 88 L15 68 L15 28 Z" />
-      <path d="M50 48 L50 8 M50 48 L15 68 M50 48 L85 68" />
-    </svg>
-  );
-}
 
 export default function Hero({ t, base }: { t: Translation['hero']; base: string }) {
   return (
     <section className="relative overflow-hidden bg-ink-950">
       <div className="absolute inset-0 bg-grid-dark" aria-hidden="true" />
-      {/* Декоративные каркасные кубики (как в макете) */}
-      <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden="true">
-        {DECO_CUBES.map((c, i) => (
-          <DecoCube key={i} {...c} />
-        ))}
-      </div>
-      {/* Свечение за 3D-объектом */}
+      {/* Технический фон из макета: подсвеченные ячейки сетки + тонкие дуги */}
+      <TechBackdrop cells />
+      {/* Лёгкое свечение за 3D-кластером (у макета крупного ореола нет — PNG кубиков несёт своё) */}
       <div
-        className="pointer-events-none absolute right-[-8%] top-[-10%] h-[640px] w-[640px] rounded-full bg-accent-500/25 blur-[140px]"
+        className="pointer-events-none absolute right-[-8%] top-[-10%] h-[640px] w-[640px] rounded-full bg-accent-500/10 blur-[140px]"
         aria-hidden="true"
       />
 
