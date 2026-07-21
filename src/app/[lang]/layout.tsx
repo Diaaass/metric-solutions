@@ -18,7 +18,7 @@ const oswald = Oswald({
 
 // Основной текст (Geologica из макета)
 const geologica = Geologica({
-  weight: ['200', '300', '400', '500', '600'],
+  weight: ['100', '200', '300', '400', '500', '600'],
   subsets: ['latin', 'cyrillic'],
   variable: '--font-sans',
   display: 'swap',

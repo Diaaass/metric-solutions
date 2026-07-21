@@ -28,11 +28,11 @@ export default function ServicesPage({ params }: Props) {
 
       <Container>
         <div className="relative pt-14 md:pt-20 pb-8">
-          <p className="text-lg md:text-xl font-extralight text-white tracking-tight mb-4 animate-fade-in">
+          <p className="text-lg md:text-xl font-thin text-white tracking-[-0.03em] mb-4 animate-fade-in">
             {t.breadcrumb}
           </p>
           <h2 className="!text-3xl md:!text-[34px] mb-5 animate-fade-in-up">{t.title}</h2>
-          <p className="max-w-xl text-lg md:text-xl font-extralight text-white leading-snug tracking-tight animate-fade-in-up delay-100">
+          <p className="max-w-xl text-lg md:text-xl font-thin text-white leading-snug tracking-[-0.03em] animate-fade-in-up delay-100">
             {t.subtitle}
           </p>
         </div>

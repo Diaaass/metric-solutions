@@ -66,7 +66,7 @@ export default function Hero({ t, base }: { t: Translation['hero']; base: string
             {t.title} <span className="text-grad">{t.titleAccent}</span>
           </h1>
 
-          <p className="max-w-xl text-lg md:text-xl font-extralight text-white leading-snug tracking-tight mb-10 animate-fade-in-up delay-200">
+          <p className="max-w-xl text-lg md:text-xl font-thin text-white leading-snug tracking-[-0.03em] mb-10 animate-fade-in-up delay-200">
             {t.subtitle}
           </p>
 

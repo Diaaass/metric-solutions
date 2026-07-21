@@ -64,11 +64,11 @@ export default function ContactsPage({ params }: Props) {
 
       <Container>
         <div className="relative pt-14 md:pt-20 pb-6">
-          <p className="text-lg md:text-xl font-extralight text-white tracking-tight mb-5 animate-fade-in">
+          <p className="text-lg md:text-xl font-thin text-white tracking-[-0.03em] mb-5 animate-fade-in">
             {t.breadcrumb}
           </p>
           <h1 className="mb-5 animate-fade-in-up">{t.title}</h1>
-          <p className="max-w-2xl text-base md:text-lg font-extralight text-white leading-relaxed tracking-tight animate-fade-in-up delay-100">
+          <p className="max-w-2xl text-base md:text-lg font-thin text-white leading-relaxed tracking-[-0.03em] animate-fade-in-up delay-100">
             {t.subtitle}
           </p>
         </div>

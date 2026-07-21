@@ -32,7 +32,7 @@ export default function SolutionsPage({ params }: Props) {
 
       <Container>
         <div className="relative pt-14 md:pt-20 pb-10">
-          <p className="text-lg md:text-xl font-extralight text-white tracking-tight mb-5 animate-fade-in">
+          <p className="text-lg md:text-xl font-thin text-white tracking-[-0.03em] mb-5 animate-fade-in">
             {t.breadcrumb}
           </p>
           {/* Дисплейный заголовок с градиентными частями (как в макете) */}
@@ -42,10 +42,10 @@ export default function SolutionsPage({ params }: Props) {
             <br />
             {t.heroTitle2} <span className="text-grad">{t.heroTitle2Accent}</span>
           </h1>
-          <p className="max-w-2xl text-base md:text-lg font-extralight text-white leading-relaxed tracking-tight mb-8 animate-fade-in-up delay-100">
+          <p className="max-w-2xl text-base md:text-lg font-thin text-white leading-relaxed tracking-[-0.03em] mb-8 animate-fade-in-up delay-100">
             {t.heroSubtitle}
           </p>
-          <p className="max-w-2xl text-base md:text-lg font-extralight text-white leading-relaxed tracking-tight animate-fade-in-up delay-200">
+          <p className="max-w-2xl text-base md:text-lg font-thin text-white leading-relaxed tracking-[-0.03em] animate-fade-in-up delay-200">
             {t.intro}
           </p>
         </div>

@@ -68,11 +68,11 @@ export default function AboutPage({ params }: Props) {
 
       <Container>
         <div className="relative pt-14 md:pt-20 pb-10">
-          <p className="text-lg md:text-xl font-extralight text-white tracking-tight mb-4 animate-fade-in">
+          <p className="text-lg md:text-xl font-thin text-white tracking-[-0.03em] mb-4 animate-fade-in">
             {t.breadcrumb}
           </p>
           <h2 className="!text-3xl md:!text-[34px] max-w-2xl mb-8 animate-fade-in-up">{t.title}</h2>
-          <p className="max-w-xl text-lg md:text-xl font-extralight text-white leading-relaxed animate-fade-in-up delay-100">
+          <p className="max-w-xl text-lg md:text-xl font-thin text-white leading-relaxed tracking-[-0.03em] animate-fade-in-up delay-100">
             <span className="text-grad font-medium">{t.brand}</span>
             {t.intro}
           </p>
