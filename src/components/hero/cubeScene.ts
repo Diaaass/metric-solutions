@@ -4,8 +4,9 @@ import * as THREE from 'three';
  * Процедурная изометрическая сцена из кубов для hero (Фаза 2).
  * Vanilla three.js (без react-three-fiber). Фабрика createScene() создаёт
  * рендерер поверх переданного <canvas>, строит кластер тёмно-синих «стеклянных»
- * кубов, мигающие 4-лучевые блики и детерминированный бесшовный цикл сдвигов
- * групп кубов на один шаг сетки вдоль изо-осей.
+ * кубов (единичные + несколько слэбов 1×2), мигающие блики двух типов
+ * (крупные 4-лучевые «герои» и мелкие точечные искры) и детерминированный
+ * бесшовный цикл сдвигов групп блоков на один шаг сетки вдоль изо-осей.
  *
  * Никакого рандома/времени на этапе SSR — весь сид задаётся здесь, на клиенте,
  * уже после mount, поэтому расхождений гидрации быть не может.
@@ -54,9 +55,10 @@ const CUBE = 1; // ребро куба (world units)
 const GAP = 0.04; // микро-зазор между кубами, чтобы читались рёбра
 const STEP = CUBE + GAP; // шаг сетки
 const LOOP = 15; // период бесшовного цикла сдвигов, сек
+const SLAB_TARGET = 5; // сколько блоков 1×2 попытаться собрать
 
 // ---------------------------------------------------------------------------
-// Текстура 4-лучевой звезды-блика (мягкое свечение + острые лучи).
+// Текстура 4-лучевой звезды-блика (крупный «герой»: мягкое свечение + лучи).
 // ---------------------------------------------------------------------------
 function makeStarTexture(): THREE.Texture {
   const S = 128;
@@ -65,7 +67,6 @@ function makeStarTexture(): THREE.Texture {
   const ctx = cnv.getContext('2d')!;
   const c = S / 2;
 
-  // мягкое радиальное свечение (голубое, с широким bloom-ореолом)
   const glow = ctx.createRadialGradient(c, c, 0, c, c, c);
   glow.addColorStop(0, 'rgba(175,218,255,0.98)');
   glow.addColorStop(0.1, 'rgba(95,170,255,0.72)');
@@ -75,7 +76,6 @@ function makeStarTexture(): THREE.Texture {
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, S, S);
 
-  // лучи звезды: рисуем через градиент-полоски (аддитивно поверх)
   const drawRay = (angle: number, len: number, width: number) => {
     ctx.save();
     ctx.translate(c, c);
@@ -93,12 +93,58 @@ function makeStarTexture(): THREE.Texture {
     ctx.fill();
     ctx.restore();
   };
-  // 4 длинных луча (крест) + 4 коротких (диагонали)
   for (let i = 0; i < 4; i++) drawRay((i * Math.PI) / 2, c * 0.95, 2.2);
   for (let i = 0; i < 4; i++) drawRay((i * Math.PI) / 2 + Math.PI / 4, c * 0.5, 1.4);
 
-  // яркое ядро
   const core = ctx.createRadialGradient(c, c, 0, c, c, S * 0.06);
+  core.addColorStop(0, 'rgba(255,255,255,1)');
+  core.addColorStop(1, 'rgba(210,235,255,0)');
+  ctx.fillStyle = core;
+  ctx.fillRect(0, 0, S, S);
+
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  return tex;
+}
+
+// Мелкая точечная искра (второй слой бликов — dim pinpoints вдоль рёбер).
+function makePinTexture(): THREE.Texture {
+  const S = 64;
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = S;
+  const ctx = cnv.getContext('2d')!;
+  const c = S / 2;
+
+  const glow = ctx.createRadialGradient(c, c, 0, c, c, c);
+  glow.addColorStop(0, 'rgba(215,238,255,0.95)');
+  glow.addColorStop(0.25, 'rgba(110,180,255,0.45)');
+  glow.addColorStop(0.7, 'rgba(30,100,220,0.08)');
+  glow.addColorStop(1, 'rgba(10,40,120,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, S, S);
+
+  // короткий тонкий крест
+  const drawRay = (angle: number) => {
+    ctx.save();
+    ctx.translate(c, c);
+    ctx.rotate(angle);
+    const g = ctx.createLinearGradient(0, 0, c * 0.72, 0);
+    g.addColorStop(0, 'rgba(225,242,255,0.9)');
+    g.addColorStop(1, 'rgba(150,200,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, -0.9);
+    ctx.lineTo(c * 0.72, 0);
+    ctx.lineTo(0, 0.9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  };
+  for (let i = 0; i < 4; i++) drawRay((i * Math.PI) / 2);
+
+  const core = ctx.createRadialGradient(c, c, 0, c, c, S * 0.09);
   core.addColorStop(0, 'rgba(255,255,255,1)');
   core.addColorStop(1, 'rgba(210,235,255,0)');
   ctx.fillStyle = core;
@@ -130,6 +176,33 @@ function makeHazeTexture(): THREE.Texture {
   return tex;
 }
 
+// Шумовая карта шероховатости → «металлический» микрорельеф на гранях
+// (местами матовое, местами блик от верхнего света = серебристый шиммер).
+function makeNoiseTexture(): THREE.Texture {
+  const S = 64;
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = S;
+  const ctx = cnv.getContext('2d')!;
+  const img = ctx.createImageData(S, S);
+  const r = mulberry32(0x9e3779b9);
+  for (let i = 0; i < S * S; i++) {
+    let v = 0.55 + r() * 0.4; // в основном шероховато
+    if (r() < 0.16) v = 0.24 + r() * 0.16; // блестящие «зёрна» → металлический шум на топах
+    const g = Math.round(v * 255);
+    img.data[i * 4] = g;
+    img.data[i * 4 + 1] = g;
+    img.data[i * 4 + 2] = g;
+    img.data[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.NoColorSpace; // это данные, не цвет
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  return tex;
+}
+
 // ---------------------------------------------------------------------------
 // Геометрия кластера: два «лобных» эллипсоида (верхний крупнее) с талией.
 // ---------------------------------------------------------------------------
@@ -144,7 +217,6 @@ function buildCells(rng: () => number): CubeCell[] {
   const present = new Set<string>();
   const key = (i: number, j: number, k: number) => `${i},${j},${k}`;
 
-  // верхний лобик (больше) + нижний (меньше), сдвинуты по Y, между ними талия
   const lobes = [
     { cx: 0, cy: 2.1, cz: 0, rx: 2.3, ry: 2.0, rz: 2.3 }, // верхний
     { cx: 0.2, cy: -2.4, cz: -0.2, rx: 1.7, ry: 1.7, rz: 1.7 }, // нижний
@@ -159,7 +231,6 @@ function buildCells(rng: () => number): CubeCell[] {
           const dy = (j - l.cy) / l.ry;
           const dz = (k - l.cz) / l.rz;
           const d = dx * dx + dy * dy + dz * dz;
-          // мягкая граница: срез + немного шума → неровный ступенчатый силуэт
           if (d <= 1 - 0.18 + rng() * 0.36) {
             inside = true;
             break;
@@ -173,9 +244,8 @@ function buildCells(rng: () => number): CubeCell[] {
     }
   }
 
-  // Отбрасываем полностью внутренние кубы (все 6 соседей есть) — они невидимы,
-  // экономим draw calls и заодно получаем «пустоты» при сдвигах.
-  const visible = cells.filter(({ i, j, k }) => {
+  // Отбрасываем полностью внутренние кубы (все 6 соседей есть) — они невидимы.
+  return cells.filter(({ i, j, k }) => {
     return !(
       present.has(key(i + 1, j, k)) &&
       present.has(key(i - 1, j, k)) &&
@@ -185,25 +255,90 @@ function buildCells(rng: () => number): CubeCell[] {
       present.has(key(i, j, k - 1))
     );
   });
-  return visible;
+}
+
+// ---------------------------------------------------------------------------
+// Блоки (piece): единичный куб или слэб 1×2, из ячеек сетки в world-координаты.
+// ---------------------------------------------------------------------------
+interface PieceDesc {
+  base: THREE.Vector3; // центр блока в world (в покое)
+  size: THREE.Vector3; // размеры в world units (для scale и half-extent)
+}
+
+function buildPieces(
+  cells: CubeCell[],
+  rng: () => number,
+  cx: number,
+  cy: number,
+  cz: number,
+): PieceDesc[] {
+  const key = (i: number, j: number, k: number) => `${i},${j},${k}`;
+  const present = new Set(cells.map((c) => key(c.i, c.j, c.k)));
+  const used = new Set<string>();
+  const world = (i: number, j: number, k: number) =>
+    new THREE.Vector3((i - cx) * STEP, (j - cy) * STEP, (k - cz) * STEP);
+  // предпочитаем горизонтальные слэбы (x/z) как в референсе
+  const slabAxes = [
+    [1, 0, 0],
+    [0, 0, 1],
+    [1, 0, 0],
+    [0, 0, 1],
+    [0, 1, 0],
+  ];
+
+  const order = cells
+    .map((c) => ({ c, r: rng() }))
+    .sort((a, b) => a.r - b.r)
+    .map((o) => o.c);
+
+  const pieces: PieceDesc[] = [];
+  let slabs = 0;
+  for (const c of order) {
+    const k0 = key(c.i, c.j, c.k);
+    if (used.has(k0)) continue;
+    if (slabs < SLAB_TARGET && rng() < 0.55) {
+      const [ax, ay, az] = slabAxes[Math.floor(rng() * slabAxes.length)];
+      const nk = key(c.i + ax, c.j + ay, c.k + az);
+      if (present.has(nk) && !used.has(nk)) {
+        used.add(k0);
+        used.add(nk);
+        slabs++;
+        const a = world(c.i, c.j, c.k);
+        const b = world(c.i + ax, c.j + ay, c.k + az);
+        pieces.push({
+          base: a.clone().add(b).multiplyScalar(0.5),
+          size: new THREE.Vector3(
+            ax ? STEP + CUBE : CUBE,
+            ay ? STEP + CUBE : CUBE,
+            az ? STEP + CUBE : CUBE,
+          ),
+        });
+        continue;
+      }
+    }
+    used.add(k0);
+    pieces.push({ base: world(c.i, c.j, c.k), size: new THREE.Vector3(CUBE, CUBE, CUBE) });
+  }
+  return pieces;
 }
 
 // ---------------------------------------------------------------------------
 // Расписание сдвигов: детерминированное, бесшовное (в t=0 и t=LOOP смещения=0).
+// Группировка соседей — по world-дистанции (работает и для слэбов).
 // ---------------------------------------------------------------------------
 interface Mover {
-  cubeIdx: number[]; // индексы кубов группы
-  axis: THREE.Vector3; // направление сдвига (world), длина = STEP
-  tOut: number; // старт «разъезда»
-  dOut: number; // длительность разъезда
-  tBack: number; // старт возврата
-  dBack: number; // длительность возврата
+  idx: number[];
+  axis: THREE.Vector3;
+  tOut: number;
+  dOut: number;
+  tBack: number;
+  dBack: number;
 }
 
 function buildMovers(
-  cells: CubeCell[],
+  pieces: PieceDesc[],
   rng: () => number,
-): { movers: Mover[]; cubeMover: (number | null)[] } {
+): { movers: Mover[]; pieceMover: (number | null)[] } {
   const axes = [
     new THREE.Vector3(STEP, 0, 0),
     new THREE.Vector3(-STEP, 0, 0),
@@ -212,60 +347,49 @@ function buildMovers(
     new THREE.Vector3(0, 0, STEP),
     new THREE.Vector3(0, 0, -STEP),
   ];
-  const cellKey = new Map<string, number>();
-  cells.forEach((c, idx) => cellKey.set(`${c.i},${c.j},${c.k}`, idx));
-
-  const cubeMover: (number | null)[] = new Array(cells.length).fill(null);
+  const pieceMover: (number | null)[] = new Array(pieces.length).fill(null);
   const movers: Mover[] = [];
   const EVENTS = 13;
 
   for (let e = 0; e < EVENTS; e++) {
-    // выбираем свободный «семя»-куб
     let seed = -1;
     for (let tries = 0; tries < 40; tries++) {
-      const cand = Math.floor(rng() * cells.length);
-      if (cubeMover[cand] === null) {
+      const cand = Math.floor(rng() * pieces.length);
+      if (pieceMover[cand] === null) {
         seed = cand;
         break;
       }
     }
     if (seed < 0) break;
 
-    // группа: семя + до 3 свободных соседей по сетке
     const group = [seed];
-    const c0 = cells[seed];
-    const neighborOffsets = [
-      [1, 0, 0],
-      [-1, 0, 0],
-      [0, 1, 0],
-      [0, -1, 0],
-      [0, 0, 1],
-      [0, 0, -1],
-    ];
-    const shuffled = neighborOffsets.sort(() => rng() - 0.5);
-    const groupSize = 1 + Math.floor(rng() * 3); // 1..3 доп.
-    for (const [oi, oj, ok] of shuffled) {
-      if (group.length - 1 >= groupSize) break;
-      const idx = cellKey.get(`${c0.i + oi},${c0.j + oj},${c0.k + ok}`);
-      if (idx !== undefined && cubeMover[idx] === null) group.push(idx);
+    const base0 = pieces[seed].base;
+    const near: number[] = [];
+    for (let i = 0; i < pieces.length; i++) {
+      if (i === seed || pieceMover[i] !== null) continue;
+      if (pieces[i].base.distanceTo(base0) < STEP * 1.55) near.push(i);
+    }
+    near.sort(() => rng() - 0.5);
+    const extra = Math.floor(rng() * 3); // группа до 3 блоков
+    for (const i of near) {
+      if (group.length - 1 >= extra) break;
+      group.push(i);
     }
 
     const axis = axes[Math.floor(rng() * axes.length)];
     const dOut = 1.0 + rng() * 0.5; // ~1.0–1.5s
     const dBack = 1.0 + rng() * 0.5;
     const margin = 0.4;
-    // размещаем out и back так, чтобы весь round-trip уместился в (0, LOOP)
     const hold = 0.8 + rng() * 2.2;
     const total = dOut + hold + dBack;
     const tOut = margin + rng() * (LOOP - total - 2 * margin);
     const tBack = tOut + dOut + hold;
 
-    const mover: Mover = { cubeIdx: group, axis, tOut, dOut, tBack, dBack };
-    const mi = movers.push(mover) - 1;
-    for (const idx of group) cubeMover[idx] = mi;
+    const mi = movers.push({ idx: group, axis, tOut, dOut, tBack, dBack }) - 1;
+    for (const i of group) pieceMover[i] = mi;
   }
 
-  return { movers, cubeMover };
+  return { movers, pieceMover };
 }
 
 function moverOffset(m: Mover, tLoop: number, out: THREE.Vector3): void {
@@ -282,15 +406,30 @@ function moverOffset(m: Mover, tLoop: number, out: THREE.Vector3): void {
 }
 
 // ---------------------------------------------------------------------------
-// Блики: пул спрайтов-звёзд, мигают на вершинах фронтальных рёбер.
+// Блики: два пула спрайтов (крупные звёзды + мелкие искры) на фронтальных вершинах.
 // ---------------------------------------------------------------------------
+interface GlintCfg {
+  lifeMin: number;
+  lifeRange: number;
+  delayInit: number;
+  delayMin: number;
+  delayRange: number;
+  scaleMin: number;
+  scaleRange: number;
+  heroChance: number;
+  heroBonus: number;
+  peakMin: number;
+  peakRange: number;
+  minScale: number;
+}
 interface Glint {
   sprite: THREE.Sprite;
-  vertexIdx: number;
   age: number;
   life: number;
   delay: number;
   maxScale: number;
+  peak: number;
+  cfg: GlintCfg;
 }
 
 export function createScene(
@@ -299,7 +438,6 @@ export function createScene(
 ): SceneHandle | null {
   const rng = mulberry32(SEED);
 
-  // --- renderer (с проверкой WebGL) ---
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({
@@ -323,42 +461,40 @@ export function createScene(
 
   // --- камера: истинная изометрия (ортографическая) ---
   const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 200);
-  const isoDir = new THREE.Vector3(1, 0.82, 1).normalize(); // чуть приплюснуто сверху
+  const isoDir = new THREE.Vector3(1, 0.82, 1).normalize();
   camera.position.copy(isoDir.clone().multiplyScalar(60));
   camera.up.set(0, 1, 0);
   camera.lookAt(0, 0, 0);
 
-  // --- свет: сильный верхний key даёт светлые ВЕРХНИЕ грани и тёмные бока ---
-  const hemi = new THREE.HemisphereLight(0x3a5a7e, 0x02060d, 0.6); // холодный мягкий fill
+  // --- свет: сильный верхний key (светлый серебристо-синий верх),
+  //     очень низкий ambient/hemi → боковые грани уходят почти в чёрный,
+  //     синий контровой сзади + мягкий синий подсвет спереди-снизу («стекло») ---
+  const hemi = new THREE.HemisphereLight(0x2c4866, 0x01040a, 0.16);
   scene.add(hemi);
-  const key = new THREE.DirectionalLight(0xeef4ff, 3.05); // почти сверху → светлый верх кубов
-  key.position.set(2.5, 11, 4.5);
+  const key = new THREE.DirectionalLight(0xf6f8ff, 4.35); // почти сверху → яркие топы, тёмные бока
+  key.position.set(1.4, 12.5, 2.4);
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0x2f63ff, 0.7); // синий контровой (стеклянный край)
-  rim.position.set(-7, -1, -5);
-  scene.add(rim);
-  scene.add(new THREE.AmbientLight(0x0b1a30, 0.4));
+  const rimBack = new THREE.DirectionalLight(0x2b5cff, 1.15); // синий контровой сзади
+  rimBack.position.set(-5, 2, -8);
+  scene.add(rimBack);
+  const fillBlue = new THREE.DirectionalLight(0x1c46d8, 0.3); // слабый синий подсвет граней («стекло»)
+  fillBlue.position.set(-6, -3, 5);
+  scene.add(fillBlue);
+  scene.add(new THREE.AmbientLight(0x08111f, 0.07)); // очень низкий → бока почти в чёрный
 
-  // --- материалы/геометрия кубов ---
+  // --- геометрия + шумовая карта шероховатости ---
   const boxGeo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
   const edgeGeo = new THREE.EdgesGeometry(boxGeo);
-  const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0x394e68, // navy-графит: верх ловит свет (светло-серый), бока уходят в тень
-    metalness: 0.32,
-    roughness: 0.5,
-    emissive: 0x050e1a,
-  });
+  const noiseTex = makeNoiseTexture();
   const edgeMat = new THREE.LineBasicMaterial({
     color: 0x9fc4ef,
     transparent: true,
-    opacity: 0.38,
+    opacity: 0.34,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
 
   const cells = buildCells(rng);
-
-  // центрируем кластер
   let cx = 0,
     cy = 0,
     cz = 0;
@@ -371,83 +507,128 @@ export function createScene(
   cy /= cells.length;
   cz /= cells.length;
 
-  interface CubeObj {
+  const pieces = buildPieces(cells, rng, cx, cy, cz);
+
+  // --- меши блоков: у каждого свой материал (джиттер яркости/шероховатости) ---
+  interface PieceObj {
     group: THREE.Group;
     base: THREE.Vector3;
+    half: THREE.Vector3;
   }
-  const cubes: CubeObj[] = [];
-  for (const c of cells) {
-    const g = new THREE.Group();
-    const base = new THREE.Vector3((c.i - cx) * STEP, (c.j - cy) * STEP, (c.k - cz) * STEP);
-    g.position.copy(base);
-    const mesh = new THREE.Mesh(boxGeo, bodyMat);
-    g.add(mesh);
-    const edges = new THREE.LineSegments(edgeGeo, edgeMat);
-    g.add(edges);
-    container.add(g);
-    cubes.push({ group: g, base });
-  }
-
-  // --- вершины фронтальных рёбер для бликов ---
-  const camDir = isoDir.clone(); // направление на камеру от центра
-  const vertsWorld: THREE.Vector3[] = [];
-  const corners = [
-    [-0.5, -0.5, -0.5],
-    [0.5, -0.5, -0.5],
-    [-0.5, 0.5, -0.5],
-    [0.5, 0.5, -0.5],
-    [-0.5, -0.5, 0.5],
-    [0.5, -0.5, 0.5],
-    [-0.5, 0.5, 0.5],
-    [0.5, 0.5, 0.5],
-  ];
-  const seenV = new Set<string>();
-  for (const cube of cubes) {
-    for (const [ox, oy, oz] of corners) {
-      const v = new THREE.Vector3(
-        cube.base.x + ox * CUBE,
-        cube.base.y + oy * CUBE,
-        cube.base.z + oz * CUBE,
-      );
-      // только фронтальные вершины (обращённые к камере)
-      if (v.clone().dot(camDir) < 0.2) continue;
-      const kk = `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`;
-      if (seenV.has(kk)) continue;
-      seenV.add(kk);
-      vertsWorld.push(v);
-    }
-  }
-
-  // --- пул бликов ---
-  const starTex = makeStarTexture();
-  const glints: Glint[] = [];
-  const GLINT_COUNT = Math.min(38, Math.max(18, Math.floor(vertsWorld.length * 0.5)));
-  const spawnGlint = (gl: Glint, initial: boolean) => {
-    gl.vertexIdx = Math.floor(rng() * vertsWorld.length);
-    gl.age = 0;
-    gl.life = 0.7 + rng() * 1.1; // 0.7–1.8s
-    gl.delay = initial ? rng() * 1.8 : 0.1 + rng() * 1.4;
-    // разброс размеров: много мелких + изредка крупная «геройская» звезда
-    gl.maxScale = 0.6 + rng() * 1.0 + (rng() < 0.18 ? 1.0 : 0);
-    gl.sprite.position.copy(vertsWorld[gl.vertexIdx]);
-  };
-  for (let i = 0; i < GLINT_COUNT; i++) {
-    const mat = new THREE.SpriteMaterial({
-      map: starTex,
-      color: 0x9fd0ff,
-      blending: THREE.AdditiveBlending,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false,
-      opacity: 0,
+  const pieceObjs: PieceObj[] = [];
+  const bodyMats: THREE.MeshStandardMaterial[] = [];
+  const baseColor = new THREE.Color(0x525f6d); // десатурированный сине-серый → серебристые топы
+  for (const p of pieces) {
+    const mat = new THREE.MeshStandardMaterial({
+      // низкий metalness → диффузный верх ловит key ярко; низкий ambient → бока в тень
+      color: baseColor.clone().multiplyScalar(0.78 + rng() * 0.4), // ±яркость на блок
+      metalness: 0.14 + rng() * 0.1,
+      roughness: 0.52 + rng() * 0.18,
+      roughnessMap: noiseTex,
+      emissive: 0x040b16,
     });
-    const sprite = new THREE.Sprite(mat);
-    sprite.scale.setScalar(0.001);
-    container.add(sprite);
-    const gl: Glint = { sprite, vertexIdx: 0, age: 0, life: 1, delay: 0, maxScale: 1 };
-    spawnGlint(gl, true);
-    glints.push(gl);
+    bodyMats.push(mat);
+
+    const g = new THREE.Group();
+    g.position.copy(p.base);
+    g.scale.copy(p.size); // единичный бокс → размер блока (слэб = длиннее по одной оси)
+    const mesh = new THREE.Mesh(boxGeo, mat);
+    g.add(mesh);
+    g.add(new THREE.LineSegments(edgeGeo, edgeMat));
+    container.add(g);
+    pieceObjs.push({ group: g, base: p.base, half: p.size.clone().multiplyScalar(0.5) });
   }
+
+  // --- фронтальные вершины блоков для бликов ---
+  const camDir = isoDir.clone();
+  const vertsWorld: THREE.Vector3[] = [];
+  const signs = [-0.5, 0.5];
+  const seenV = new Set<string>();
+  for (const po of pieceObjs) {
+    for (const sx of signs)
+      for (const sy of signs)
+        for (const sz of signs) {
+          const v = new THREE.Vector3(
+            po.base.x + sx * 2 * po.half.x,
+            po.base.y + sy * 2 * po.half.y,
+            po.base.z + sz * 2 * po.half.z,
+          );
+          if (v.clone().dot(camDir) < 0.2) continue;
+          const kk = `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`;
+          if (seenV.has(kk)) continue;
+          seenV.add(kk);
+          vertsWorld.push(v);
+        }
+  }
+
+  // --- два пула бликов ---
+  const starTex = makeStarTexture();
+  const pinTex = makePinTexture();
+  const glints: Glint[] = [];
+
+  const spawnGlint = (gl: Glint, initial: boolean) => {
+    const cfg = gl.cfg;
+    gl.age = 0;
+    gl.life = cfg.lifeMin + rng() * cfg.lifeRange;
+    gl.delay = initial ? rng() * cfg.delayInit : cfg.delayMin + rng() * cfg.delayRange;
+    gl.maxScale =
+      cfg.scaleMin + rng() * cfg.scaleRange + (rng() < cfg.heroChance ? cfg.heroBonus : 0);
+    gl.peak = cfg.peakMin + rng() * cfg.peakRange;
+    gl.sprite.position.copy(vertsWorld[Math.floor(rng() * vertsWorld.length)]);
+  };
+
+  const addPool = (count: number, tex: THREE.Texture, color: number, cfg: GlintCfg) => {
+    for (let i = 0; i < count; i++) {
+      const mat = new THREE.SpriteMaterial({
+        map: tex,
+        color,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        opacity: 0,
+      });
+      const sprite = new THREE.Sprite(mat);
+      sprite.scale.setScalar(0.001);
+      container.add(sprite);
+      const gl: Glint = { sprite, age: 0, life: 1, delay: 0, maxScale: 1, peak: 1, cfg };
+      spawnGlint(gl, true);
+      glints.push(gl);
+    }
+  };
+
+  const heroCfg: GlintCfg = {
+    lifeMin: 0.7,
+    lifeRange: 1.1,
+    delayInit: 1.8,
+    delayMin: 0.2,
+    delayRange: 1.6,
+    scaleMin: 0.75,
+    scaleRange: 0.9,
+    heroChance: 0.22,
+    heroBonus: 1.1,
+    peakMin: 0.9,
+    peakRange: 0.1,
+    minScale: 0.12,
+  };
+  const pinCfg: GlintCfg = {
+    lifeMin: 0.35,
+    lifeRange: 0.7,
+    delayInit: 1.3,
+    delayMin: 0.08,
+    delayRange: 0.9,
+    scaleMin: 0.1,
+    scaleRange: 0.28,
+    heroChance: 0,
+    heroBonus: 0,
+    peakMin: 0.45,
+    peakRange: 0.4,
+    minScale: 0.02,
+  };
+  const heroCount = Math.min(16, Math.max(9, Math.floor(vertsWorld.length * 0.22)));
+  const pinCount = Math.min(72, Math.max(34, Math.floor(vertsWorld.length * 1.0)));
+  addPool(heroCount, starTex, 0x9fd0ff, heroCfg);
+  addPool(pinCount, pinTex, 0xcfe6ff, pinCfg);
 
   // --- дымка свечения за кластером (фейковый bloom-ambient) ---
   const hazeMat = new THREE.SpriteMaterial({
@@ -457,28 +638,26 @@ export function createScene(
     transparent: true,
     depthTest: false,
     depthWrite: false,
-    opacity: 0.62,
+    opacity: 0.6,
   });
   const haze = new THREE.Sprite(hazeMat);
   haze.scale.setScalar(12);
   haze.position.set(0, 0, -2);
   container.add(haze);
 
-  // --- подгонка ортокамеры под кластер (только по кубам, без дымки/бликов) ---
+  // --- подгонка ортокамеры под кластер (только по блокам) ---
   const bbox = new THREE.Box3();
-  const half = CUBE / 2;
   const corner = new THREE.Vector3();
-  for (const cube of cubes) {
-    bbox.expandByPoint(corner.set(cube.base.x - half, cube.base.y - half, cube.base.z - half));
-    bbox.expandByPoint(corner.set(cube.base.x + half, cube.base.y + half, cube.base.z + half));
+  for (const po of pieceObjs) {
+    bbox.expandByPoint(corner.copy(po.base).sub(po.half));
+    bbox.expandByPoint(corner.copy(po.base).add(po.half));
   }
   const sphere = bbox.getBoundingSphere(new THREE.Sphere());
   const fit = () => {
     const w = canvas.clientWidth || 1;
     const h = canvas.clientHeight || 1;
     const aspect = w / h;
-    // запас под сдвиги кубов (до одного шага сетки наружу)
-    const R = sphere.radius + STEP * 0.8;
+    const R = sphere.radius + STEP * 0.8; // запас под сдвиги
     let halfH = R;
     let halfW = R;
     if (aspect >= 1) halfW = R * aspect;
@@ -492,36 +671,30 @@ export function createScene(
   };
   fit();
 
-  // --- цикл анимации ---
-  // Своё накопление времени с ограничением dt: пауза/возврат и троттлинг вкладки
-  // не дают «прыжка» по времени (сдвиги кубов остаются плавными).
+  // --- цикл анимации (своё время с клампом dt — без прыжков после паузы) ---
   let simTime = 0;
   let lastNow = performance.now();
   let raf = 0;
   let paused = false;
   let ready = false;
   const tmp = new THREE.Vector3();
-  const { movers, cubeMover } = buildMovers(cells, rng);
+  const { movers, pieceMover } = buildMovers(pieces, rng);
 
   const update = (dt: number) => {
     simTime += dt;
     const t = simTime;
     const tLoop = t % LOOP;
 
-    // общий bob + лёгкое «дыхание»
-    container.position.y = Math.sin((t / 7) * Math.PI * 2) * 0.18;
-    const breath = 1 + Math.sin((t / 9) * Math.PI * 2) * 0.012;
-    container.scale.setScalar(breath);
+    container.position.y = Math.sin((t / 7) * Math.PI * 2) * 0.18; // общий bob
+    container.scale.setScalar(1 + Math.sin((t / 9) * Math.PI * 2) * 0.012); // «дыхание»
 
-    // сдвиги кубов
-    for (let i = 0; i < cubes.length; i++) {
-      const mi = cubeMover[i];
+    for (let i = 0; i < pieceObjs.length; i++) {
+      const mi = pieceMover[i];
       if (mi === null) continue;
       moverOffset(movers[mi], tLoop, tmp);
-      cubes[i].group.position.copy(cubes[i].base).add(tmp);
+      pieceObjs[i].group.position.copy(pieceObjs[i].base).add(tmp);
     }
 
-    // блики
     for (const gl of glints) {
       const mat = gl.sprite.material as THREE.SpriteMaterial;
       if (gl.delay > 0) {
@@ -536,14 +709,12 @@ export function createScene(
         continue;
       }
       const p = gl.age / gl.life;
-      // огибающая с плато: быстрый рост → держим ярко → плавное гашение
-      // (больше звёзд одновременно «горят» ярко, как в референсе)
       let env: number;
       if (p < 0.18) env = easeInOutCubic(p / 0.18);
       else if (p > 0.72) env = easeInOutCubic(Math.max(0, (1 - p) / 0.28));
       else env = 1;
-      mat.opacity = env;
-      gl.sprite.scale.setScalar(0.12 + env * gl.maxScale);
+      mat.opacity = env * gl.peak;
+      gl.sprite.scale.setScalar(gl.cfg.minScale + env * gl.maxScale);
     }
 
     renderer.render(scene, camera);
@@ -558,12 +729,11 @@ export function createScene(
     const now = performance.now();
     let dt = (now - lastNow) / 1000;
     lastNow = now;
-    if (dt > 0.1) dt = 0.1; // кламп (после паузы/троттлинга)
+    if (dt > 0.1) dt = 0.1;
     update(dt);
     raf = requestAnimationFrame(loop);
   };
 
-  // ResizeObserver → пересчёт камеры/рендерера
   const ro = new ResizeObserver(() => fit());
   ro.observe(canvas);
 
@@ -574,7 +744,7 @@ export function createScene(
       if (p === paused) return;
       paused = p;
       if (!p) {
-        lastNow = performance.now(); // без скачка dt при возобновлении
+        lastNow = performance.now();
         loop();
       } else {
         cancelAnimationFrame(raf);
@@ -596,9 +766,11 @@ export function createScene(
       ro.disconnect();
       boxGeo.dispose();
       edgeGeo.dispose();
-      bodyMat.dispose();
       edgeMat.dispose();
+      noiseTex.dispose();
+      for (const m of bodyMats) m.dispose();
       starTex.dispose();
+      pinTex.dispose();
       hazeMat.map?.dispose();
       hazeMat.dispose();
       for (const gl of glints) (gl.sprite.material as THREE.SpriteMaterial).dispose();
