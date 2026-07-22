@@ -47,15 +47,16 @@ export default function ServicesPreview({
             />
             <div className="relative overflow-hidden rounded-[30px] border-4 border-[#01549e]">
               <Image
-                src="/cta-banner.png"
+                src="/cta-banner.webp"
                 alt=""
                 width={1400}
                 height={576}
+                sizes="(min-width: 1280px) 1216px, 100vw"
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-ink-950/30" aria-hidden="true" />
               <div className="relative flex flex-col md:flex-row md:items-center gap-6 px-8 md:px-14 py-8 md:py-7">
-                <div className="flex-1">
+                <div className="flex-1 text-center md:text-left">
                   <h3 className="!text-xl md:!text-2xl font-medium tracking-wide mb-1.5">
                     {banner.title}
                   </h3>

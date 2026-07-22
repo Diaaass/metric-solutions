@@ -21,7 +21,7 @@ export default function Hero({ t, base }: { t: Translation['hero']; base: string
       {/* 3D-кластер справа сверху (как в макете — наезжает на верх).
           Внутри: статичный постер (LCP) + ленивая three-сцена с кроссфейдом. */}
       <div
-        className="pointer-events-none absolute right-[-2%] top-[-6%] hidden w-[52%] lg:block"
+        className="pointer-events-none absolute right-[-1%] top-[-7%] hidden w-[26%] lg:block"
         aria-hidden="true"
       >
         <HeroCubes />
