@@ -98,7 +98,7 @@ export default function Header({ nav, lang }: { nav: Translation['nav']; lang: L
 
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-white hover:bg-white/10"
+            className="md:hidden p-2.5 rounded-lg text-white hover:bg-white/10"
             aria-label={isMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
             aria-expanded={isMenuOpen}
           >

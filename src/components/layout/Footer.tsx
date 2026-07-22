@@ -32,7 +32,7 @@ export default function Footer({
         <Container>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 py-14">
             {/* Лого + подпись */}
-            <div className="flex flex-col items-center md:items-start gap-4">
+            <div className="flex flex-col items-start gap-4">
               <Image
                 src="/logo-figma.svg"
                 alt="Metric Solutions"
@@ -44,7 +44,7 @@ export default function Footer({
             </div>
 
             {/* Навигация */}
-            <div>
+            <div className="border-t border-[rgba(26,92,255,0.3)] pt-10 md:border-t-0 md:pt-0">
               <h4 className="font-card !text-base font-semibold mb-6">{footer.navTitle}</h4>
               <ul className="space-y-4">
                 {navLinks.map((link) => (
@@ -61,7 +61,7 @@ export default function Footer({
             </div>
 
             {/* Направления */}
-            <div>
+            <div className="border-t border-[rgba(26,92,255,0.3)] pt-10 md:border-t-0 md:pt-0">
               <h4 className="font-card !text-base font-semibold mb-6">{footer.servicesTitle}</h4>
               <ul className="space-y-4">
                 {footer.services.map((s, i) => (
@@ -78,7 +78,7 @@ export default function Footer({
             </div>
 
             {/* Контакты */}
-            <div>
+            <div className="border-t border-[rgba(26,92,255,0.3)] pt-10 md:border-t-0 md:pt-0">
               <h4 className="font-card !text-base font-semibold mb-6">{footer.contactsTitle}</h4>
               <ul className="space-y-4 font-card text-base font-light text-white">
                 <li>
