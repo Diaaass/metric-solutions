@@ -137,7 +137,7 @@ export default function HeroCubes() {
         src="/hero-3d.png"
         alt=""
         width={1200}
-        height={800}
+        height={1600}
         priority
         className={`h-auto w-full object-contain transition-opacity duration-700 ${
           ready ? 'opacity-0' : 'opacity-100'
