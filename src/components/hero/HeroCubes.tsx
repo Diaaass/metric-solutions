@@ -7,7 +7,7 @@ import type { SceneHandle } from './cubeScene';
 /**
  * Клиентская обёртка hero-кубов (Фаза 2).
  *
- * - Статичный постер /hero-3d.png остаётся в SSR-разметке как LCP.
+ * - Статичный постер /hero-3d.webp остаётся в SSR-разметке как LCP.
  * - three-сцена грузится ЛЕНИВО (dynamic import) когда браузер простаивает
  *   (requestIdleCallback) → three НЕ попадает в initial-бандл страницы.
  * - Когда сцена отрисовала первый кадр — кроссфейд: постер гаснет, канвас
@@ -134,11 +134,12 @@ export default function HeroCubes() {
     <>
       {/* Постер = LCP; в SSR присутствует, кроссфейдится при готовности сцены */}
       <Image
-        src="/hero-3d.png"
+        src="/hero-3d.webp"
         alt=""
         width={1200}
         height={1600}
         priority
+        sizes="(min-width: 1024px) 26vw, 0px"
         className={`h-auto w-full object-contain transition-opacity duration-700 ${
           ready ? 'opacity-0' : 'opacity-100'
         }`}
