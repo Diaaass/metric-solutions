@@ -1,23 +1,64 @@
 import * as THREE from 'three';
+import {
+  BloomEffect,
+  EffectComposer,
+  EffectPass,
+  RenderPass,
+  ToneMappingEffect,
+  ToneMappingMode,
+} from 'postprocessing';
 
 /**
- * Процедурная изометрическая сцена из кубов для hero (Фаза 2 → ревизия по видео-референсу).
+ * Процедурная изометрическая сцена из кубов для hero (Этап 1: рендер-пайплайн).
  *
  * Vanilla three.js (без react-three-fiber). Фабрика createScene() создаёт
  * рендерер поверх переданного <canvas> и строит МОНОЛИТНЫЙ кластер тёмных
  * «стеклянно-металлических» кубов — две доли (верхняя + нижняя) с узкой талией,
  * собранные из объединения целочисленных параллелепипедов (box-union), поэтому
- * грани плоские и заподлицо, а силуэт — чистый ступенчатый (клиент: «ровнее»).
+ * грани плоские и заподлицо, а силуэт — чистый ступенчатый.
  *
  * Материал — металлический, освещён ярким верхним key + кастомным градиентным
  * окружением (PMREM): верхние грани ловят светлое небо окружения → серебристо-серые
  * с «наклёпанной» фактурой (bump/roughness-карта), боковые уходят почти в чёрное
- * стекло с синими рефлексами. Плюс два пула бликов (крупные 4-лучевые звёзды +
- * мелкие искры), аддитивные рёбра и детерминированный бесшовный цикл сдвигов групп.
+ * стекло с синими рефлексами.
+ *
+ * СВЕЧЕНИЕ — НАСТОЯЩЕЕ (postprocessing EffectComposer):
+ *   RenderPass (сцена → HDR half-float буфер, тонмаппинг рендерера ВЫКЛЮЧЕН)
+ *   → EffectPass(BloomEffect(threshold 1.0, mipmapBlur, levels 8) → ToneMappingEffect(ACES))
+ * Рёбра-LineSegments и спрайты-блики — HDR-эмиттеры (цвет ×N > 1.0, toneMapped:false),
+ * поэтому порог свечения проходят ТОЛЬКО они, а глянцевые грани (линейно < 1.0)
+ * не блумят. Никаких запечённых halo-текстур: ореол считает bloom.
+ *
+ * ИНИЦИАЛИЗАЦИЯ — ПОЭТАПНАЯ (защита INP): сборка разбита на куски, между
+ * которыми отдаём поток браузеру (scheduler.yield / setTimeout(0)); шейдеры
+ * прекомпилируются через renderer.compileAsync до первого кадра и кроссфейда.
  *
  * Никакого рандома/времени на этапе SSR — весь сид задаётся здесь, на клиенте,
  * уже после mount, поэтому расхождений гидрации быть не может.
  */
+
+/** Блок кластера: база лупа + слот аддитивного офсета для интерактива (этап 2). */
+export interface CubePiece {
+  /** Позиция блока в покое (world). */
+  readonly base: THREE.Vector3;
+  /** Половинные размеры блока (хитбокс для raycast/репульсии). */
+  readonly half: THREE.Vector3;
+  /**
+   * Аддитивный офсет интерактива — этап 2 (репульсия/волны) пишет СЮДА.
+   * Итог: position = base + офсет фонового лупа + offset. Луп не ломается.
+   */
+  readonly offset: THREE.Vector3;
+}
+
+/** Настройки качества (этап 3: лесенка деградации). */
+export interface QualityOptions {
+  /** Кол-во MIP-уровней блюра bloom: 8 desktop, 4–5 mobile. */
+  bloomLevels?: number;
+  /** Сила bloom. */
+  bloomIntensity?: number;
+  /** DPR рендера. */
+  pixelRatio?: number;
+}
 
 export interface SceneHandle {
   /** Пауза/возобновление RAF (для visibility hidden / вне вьюпорта). */
@@ -26,16 +67,53 @@ export interface SceneHandle {
   dispose: () => void;
   /** dataURL текущего кадра (для генерации постера/дебага). */
   capture: () => string | null;
-  /** dataURL кадра фиксированного размера в «позе покоя» (для постера). */
-  captureAt: (w: number, h: number, poseT?: number) => string | null;
+  /**
+   * dataURL кадра фиксированного размера в «позе покоя» (для постера).
+   * bg — если задан, кадр композитится на непрозрачный фон (для сверки скринов);
+   * без него отдаётся прозрачный PNG/WebP с починенной альфой (см. exportFrame).
+   */
+  captureAt: (
+    w: number,
+    h: number,
+    poseT?: number,
+    mime?: string,
+    quality?: number,
+    bg?: [number, number, number],
+  ) => string | null;
   /** Ручной шаг симуляции на dt сек + рендер (только для offline-дебага/скринов). */
   advance: (dt: number) => void;
+  /** Блоки кластера — база + слот аддитивного офсета (этап 2). */
+  pieces: readonly CubePiece[];
+  /** Группа-обёртка над кластером: наклон/параллакс от курсора (этап 2). */
+  tiltGroup: THREE.Group;
+  /** Ортокамера сцены (этап 2: raycast курсора в плоскость кластера). */
+  camera: THREE.OrthographicCamera;
+  /** Колбэк перед каждым кадром — этап 2 считает здесь пружины/волны. */
+  onFrame: ((t: number, dt: number) => void) | null;
+  /** Рантайм-переключение качества (этап 3). */
+  setQuality: (q: QualityOptions) => void;
+  /** Ссылки на внутренности — только в debug-режиме (?cubesdebug). */
+  debug?: SceneDebug;
 }
 
-export interface SceneOptions {
+export interface SceneDebug {
+  renderer: THREE.WebGLRenderer;
+  scene: THREE.Scene;
+  camera: THREE.OrthographicCamera;
+  composer: EffectComposer;
+  bloom: BloomEffect;
+  /** Материал рёбер — .visible=false скрывает все рёбра (замер спекуляров). */
+  edgeMat: THREE.LineBasicMaterial;
+  /** Группа всех спрайтов-бликов — .visible=false скрывает блики. */
+  glintGroup: THREE.Group;
+  /** Материал широкой синей «атмосферы». */
+  hazeMat: THREE.SpriteMaterial;
+}
+
+export interface SceneOptions extends QualityOptions {
   /** Вызывается один раз после первого успешного кадра — для кроссфейда. */
   onReady?: () => void;
-  /** preserveDrawingBuffer для toDataURL (постер/скриншот). */
+  /** preserveDrawingBuffer для toDataURL (постер/скриншот) + debug-ссылки. */
   capture?: boolean;
 }
 
@@ -66,8 +144,23 @@ const STEP = CUBE + GAP; // шаг сетки
 const LOOP = 15; // период бесшовного цикла сдвигов, сек
 const SLAB_TARGET = 4; // сколько блоков 1×2 попытаться собрать (немного, ради вариативности)
 
+// --- HDR-эмиттеры: множители цвета ВЫШЕ 1.0 → проходят порог bloom (1.0) ---
+// Только эти объекты светятся; тонмаппинг к ним не применяется (toneMapped:false).
+const EDGE_COLOR = 0xb2cff0;
+const EDGE_HDR = 3.0; // рёбра: linear(EDGE_COLOR)*3.0*0.46 → lum ≈ 0.87; порог берут поверх светлых топов
+const STAR_COLOR = 0x5aaeff; // насыщённо-синий: ядро после ACES уходит в белый, ореол остаётся синим
+const STAR_HDR = 5.0; // ядро крупного блика: lum ≈ 2.3 → уверенно за порогом bloom
+const PIN_COLOR = 0x77bcff;
+const PIN_HDR = 3.0; // мелкие искры
+const BLOOM_INTENSITY = 0.75;
+const BLOOM_LEVELS = 8; // desktop; этап 3 опустит до 4–5 на мобилке
+const BLOOM_RADIUS = 0.85;
+const HAZE_OPACITY = 0.45; // широкая синяя «атмосфера» (было 0.55, пока ореолы были запечёнными)
+const EXPOSURE = 1.12; // читается ToneMappingEffect'ом через uniform toneMappingExposure
+
 // ---------------------------------------------------------------------------
-// Текстура 4-лучевой звезды-блика (крупный «герой»: мягкое свечение + лучи).
+// Текстура 4-лучевой звезды-блика. ТОЛЬКО ФОРМА (ядро + лучи), без запечённого
+// halo: мягкий ореол вокруг рисует настоящий bloom.
 // ---------------------------------------------------------------------------
 function makeStarTexture(): THREE.Texture {
   const S = 128;
@@ -76,23 +169,18 @@ function makeStarTexture(): THREE.Texture {
   const ctx = cnv.getContext('2d')!;
   const c = S / 2;
 
-  const glow = ctx.createRadialGradient(c, c, 0, c, c, c);
-  glow.addColorStop(0, 'rgba(190,224,255,0.99)');
-  glow.addColorStop(0.1, 'rgba(105,178,255,0.78)');
-  glow.addColorStop(0.28, 'rgba(34,120,242,0.34)');
-  glow.addColorStop(0.6, 'rgba(16,72,185,0.1)');
-  glow.addColorStop(1, 'rgba(10,40,120,0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, S, S);
-
+  // Профиль луча подобран ПОД HDR-множитель: у самого ядра альфа 1 (цвет×STAR_HDR
+  // уходит за порог bloom → ореол), дальше резкий спад, чтобы тело луча в линейных
+  // единицах осталось таким же, как было до HDR (иначе весь луч выжигается в белый).
   const drawRay = (angle: number, len: number, width: number) => {
     ctx.save();
     ctx.translate(c, c);
     ctx.rotate(angle);
     const g = ctx.createLinearGradient(0, 0, len, 0);
-    g.addColorStop(0, 'rgba(228,244,255,0.97)');
-    g.addColorStop(0.5, 'rgba(125,194,255,0.38)');
-    g.addColorStop(1, 'rgba(120,190,255,0)');
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.1, 'rgba(226,242,255,0.34)');
+    g.addColorStop(0.45, 'rgba(150,205,255,0.12)');
+    g.addColorStop(1, 'rgba(130,190,255,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.moveTo(0, -width);
@@ -105,8 +193,10 @@ function makeStarTexture(): THREE.Texture {
   for (let i = 0; i < 4; i++) drawRay((i * Math.PI) / 2, c * 0.98, 2.3);
   for (let i = 0; i < 4; i++) drawRay((i * Math.PI) / 2 + Math.PI / 4, c * 0.5, 1.4);
 
-  const core = ctx.createRadialGradient(c, c, 0, c, c, S * 0.07);
+  // компактное ядро — источник ореола для bloom
+  const core = ctx.createRadialGradient(c, c, 0, c, c, S * 0.1);
   core.addColorStop(0, 'rgba(255,255,255,1)');
+  core.addColorStop(0.4, 'rgba(232,246,255,0.42)');
   core.addColorStop(1, 'rgba(210,235,255,0)');
   ctx.fillStyle = core;
   ctx.fillRect(0, 0, S, S);
@@ -118,7 +208,7 @@ function makeStarTexture(): THREE.Texture {
   return tex;
 }
 
-// Мелкая точечная искра (второй слой бликов — dim pinpoints вдоль рёбер).
+// Мелкая точечная искра — тоже только форма (короткий крест + ядро).
 function makePinTexture(): THREE.Texture {
   const S = 64;
   const cnv = document.createElement('canvas');
@@ -126,22 +216,14 @@ function makePinTexture(): THREE.Texture {
   const ctx = cnv.getContext('2d')!;
   const c = S / 2;
 
-  const glow = ctx.createRadialGradient(c, c, 0, c, c, c);
-  glow.addColorStop(0, 'rgba(215,238,255,0.95)');
-  glow.addColorStop(0.25, 'rgba(110,180,255,0.45)');
-  glow.addColorStop(0.7, 'rgba(30,100,220,0.08)');
-  glow.addColorStop(1, 'rgba(10,40,120,0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, S, S);
-
-  // короткий тонкий крест
   const drawRay = (angle: number) => {
     ctx.save();
     ctx.translate(c, c);
     ctx.rotate(angle);
     const g = ctx.createLinearGradient(0, 0, c * 0.72, 0);
-    g.addColorStop(0, 'rgba(225,242,255,0.9)');
-    g.addColorStop(1, 'rgba(150,200,255,0)');
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.25, 'rgba(210,235,255,0.32)');
+    g.addColorStop(1, 'rgba(180,215,255,0)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.moveTo(0, -0.9);
@@ -153,8 +235,9 @@ function makePinTexture(): THREE.Texture {
   };
   for (let i = 0; i < 4; i++) drawRay((i * Math.PI) / 2);
 
-  const core = ctx.createRadialGradient(c, c, 0, c, c, S * 0.09);
+  const core = ctx.createRadialGradient(c, c, 0, c, c, S * 0.11);
   core.addColorStop(0, 'rgba(255,255,255,1)');
+  core.addColorStop(0.5, 'rgba(225,242,255,0.4)');
   core.addColorStop(1, 'rgba(210,235,255,0)');
   ctx.fillStyle = core;
   ctx.fillRect(0, 0, S, S);
@@ -166,7 +249,10 @@ function makePinTexture(): THREE.Texture {
   return tex;
 }
 
-// Мягкое радиальное пятно (аддитивная «дымка» свечения за кластером).
+// Широкая синяя «атмосфера» за кластером. Это НЕ фейковый ореол эмиттеров
+// (их теперь рисует настоящий bloom), а отдельный слой рассеянного синего света:
+// он даёт кластеру ту же синюю среду, что в утверждённом рендере. Держится
+// заведомо НИЖЕ порога bloom, поэтому в свечение не подмешивается.
 function makeHazeTexture(): THREE.Texture {
   const S = 256;
   const cnv = document.createElement('canvas');
@@ -576,18 +662,45 @@ interface Glint {
   cfg: GlintCfg;
 }
 
-export function createScene(
+// ---------------------------------------------------------------------------
+// Отдать поток браузеру между кусками инициализации (защита INP / long tasks).
+// ---------------------------------------------------------------------------
+interface Scheduler {
+  yield?: () => Promise<void>;
+}
+function yieldToMain(): Promise<void> {
+  const s = (globalThis as unknown as { scheduler?: Scheduler }).scheduler;
+  return s?.yield ? s.yield() : new Promise<void>((r) => setTimeout(r, 0));
+}
+
+export async function createScene(
   canvas: HTMLCanvasElement,
   opts: SceneOptions = {},
-): SceneHandle | null {
+): Promise<SceneHandle | null> {
   const rng = mulberry32(SEED);
 
+  // Инструментовка: каждый кусок init'а меряется, самый длинный виден в
+  // performance.getEntriesByType('measure') (цель — ни одного >200 мс).
+  let tChunk = performance.now();
+  const chunk = async (name: string): Promise<void> => {
+    const end = performance.now();
+    try {
+      performance.measure(`hero:init:${name}`, { start: tChunk, end });
+    } catch {
+      /* Safari <16.4 без объектной формы measure — метрика не критична */
+    }
+    await yieldToMain();
+    tChunk = performance.now();
+  };
+
+  // ---- 1. рендерер --------------------------------------------------------
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: true,
+      antialias: false, // MSAA не нужен: композер рендерит в свой буфер (multisampling: 0)
       alpha: true,
+      stencil: false,
       powerPreference: 'high-performance',
       preserveDrawingBuffer: opts.capture ?? false, // включаем только в дебаг-режиме
     });
@@ -596,22 +709,19 @@ export function createScene(
     return null;
   }
   renderer.setClearColor(0x000000, 0); // прозрачный фон → просвечивает #001a3d страницы
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(opts.pixelRatio ?? Math.min(window.devicePixelRatio || 1, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; // мягкие светлые топы без пересвета
-  renderer.toneMappingExposure = 1.12;
+  // Тонмаппинг УБРАН из материалов: буфер композера линейный HDR, ACES применяет
+  // ToneMappingEffect уже ПОСЛЕ bloom. Экспозиция уезжает в шейдер эффекта
+  // автоматически (three заливает uniform toneMappingExposure в любой материал).
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.toneMappingExposure = EXPOSURE;
 
   const scene = new THREE.Scene();
-  const container = new THREE.Group();
-  scene.add(container);
-
-  // --- окружение (PMREM из кастомного equirect-градиента) для металлических рефлексов ---
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  pmrem.compileEquirectangularShader();
-  const envSrc = makeEnvEquirect();
-  const envRT = pmrem.fromEquirectangular(envSrc);
-  scene.environment = envRT.texture;
-  envSrc.dispose();
+  const tiltGroup = new THREE.Group(); // этап 2: наклон/параллакс от курсора
+  const container = new THREE.Group(); // фоновый bob/breathe
+  tiltGroup.add(container);
+  scene.add(tiltGroup);
 
   // --- камера: истинная изометрия (ортографическая) ---
   const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 200);
@@ -636,16 +746,30 @@ export function createScene(
   scene.add(fillBlue);
   scene.add(new THREE.AmbientLight(0x0a1424, 0.05)); // очень низкий → бока почти в чёрный
 
-  // --- геометрия + «наклёпанная» карта (bump + roughness) ---
+  await chunk('renderer');
+
+  // ---- 2. окружение (PMREM из кастомного equirect-градиента) --------------
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  const envSrc = makeEnvEquirect();
+  const envRT = pmrem.fromEquirectangular(envSrc);
+  scene.environment = envRT.texture;
+  envSrc.dispose();
+
+  await chunk('env');
+
+  // ---- 3. геометрия + «наклёпанная» карта (bump + roughness) --------------
   const boxGeo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
   const edgeGeo = new THREE.EdgesGeometry(boxGeo);
   const grainTex = makeGrainTexture();
+  // HDR-эмиттер №1: рёбра. Цвет ×EDGE_HDR > 1.0 → проходят порог bloom.
   const edgeMat = new THREE.LineBasicMaterial({
-    color: 0xbcd6f2,
+    color: new THREE.Color(EDGE_COLOR).multiplyScalar(EDGE_HDR),
     transparent: true,
     opacity: 0.46,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    toneMapped: false,
   });
 
   const cells = buildVoxels();
@@ -663,40 +787,54 @@ export function createScene(
 
   const pieces = buildPieces(cells, rng, cx, cy, cz);
 
-  // --- меши блоков: у каждого свой материал (джиттер яркости/шероховатости) ---
+  await chunk('geometry');
+
+  // ---- 4. меши блоков (батчами, с отдачей потока между батчами) -----------
+  // У каждого блока свой материал (джиттер яркости/шероховатости).
   interface PieceObj {
     group: THREE.Group;
     base: THREE.Vector3;
     half: THREE.Vector3;
+    offset: THREE.Vector3;
   }
   const pieceObjs: PieceObj[] = [];
   const bodyMats: THREE.MeshStandardMaterial[] = [];
   const baseColor = new THREE.Color(0xb4b9c2); // светлый нейтральный → серебристый рефлекс
-  for (const p of pieces) {
-    const mat = new THREE.MeshStandardMaterial({
-      // зеркальный тёмный «хром»: топы ловят белое небо окружения → серебро; бока → чёрное
-      color: baseColor.clone().multiplyScalar(0.86 + rng() * 0.26), // ±яркость на блок
-      metalness: 0.78 + rng() * 0.12,
-      roughness: 0.28 + rng() * 0.2,
-      roughnessMap: grainTex,
-      bumpMap: grainTex,
-      bumpScale: 0.04,
-      envMapIntensity: 1.1 + rng() * 0.18,
-      emissive: 0x050609,
-    });
-    bodyMats.push(mat);
+  const BATCH = 16;
+  for (let start = 0; start < pieces.length; start += BATCH) {
+    for (const p of pieces.slice(start, start + BATCH)) {
+      const mat = new THREE.MeshStandardMaterial({
+        // зеркальный тёмный «хром»: топы ловят белое небо окружения → серебро; бока → чёрное
+        color: baseColor.clone().multiplyScalar(0.86 + rng() * 0.26), // ±яркость на блок
+        metalness: 0.78 + rng() * 0.12,
+        roughness: 0.28 + rng() * 0.2,
+        roughnessMap: grainTex,
+        bumpMap: grainTex,
+        bumpScale: 0.04,
+        envMapIntensity: 1.1 + rng() * 0.18,
+        emissive: 0x050609,
+      });
+      bodyMats.push(mat);
 
-    const g = new THREE.Group();
-    g.position.copy(p.base);
-    g.scale.copy(p.size); // единичный бокс → размер блока (слэб = длиннее по одной оси)
-    const mesh = new THREE.Mesh(boxGeo, mat);
-    g.add(mesh);
-    g.add(new THREE.LineSegments(edgeGeo, edgeMat));
-    container.add(g);
-    pieceObjs.push({ group: g, base: p.base, half: p.size.clone().multiplyScalar(0.5) });
+      const g = new THREE.Group();
+      g.position.copy(p.base);
+      g.scale.copy(p.size); // единичный бокс → размер блока (слэб = длиннее по одной оси)
+      const mesh = new THREE.Mesh(boxGeo, mat);
+      g.add(mesh);
+      g.add(new THREE.LineSegments(edgeGeo, edgeMat));
+      container.add(g);
+      pieceObjs.push({
+        group: g,
+        base: p.base,
+        half: p.size.clone().multiplyScalar(0.5),
+        offset: new THREE.Vector3(),
+      });
+    }
+    await chunk('meshes');
   }
 
-  // --- фронтальные вершины блоков для бликов ---
+  // ---- 5. блики (два пула HDR-спрайтов) -----------------------------------
+  // Фронтальные вершины блоков — точки, где рождаются блики.
   const camDir = isoDir.clone();
   const vertsWorld: THREE.Vector3[] = [];
   const signs = [-0.5, 0.5];
@@ -718,10 +856,11 @@ export function createScene(
         }
   }
 
-  // --- два пула бликов ---
   const starTex = makeStarTexture();
   const pinTex = makePinTexture();
   const glints: Glint[] = [];
+  const glintGroup = new THREE.Group();
+  container.add(glintGroup);
 
   const spawnGlint = (gl: Glint, initial: boolean) => {
     const cfg = gl.cfg;
@@ -734,7 +873,8 @@ export function createScene(
     gl.sprite.position.copy(vertsWorld[Math.floor(rng() * vertsWorld.length)]);
   };
 
-  const addPool = (count: number, tex: THREE.Texture, color: number, cfg: GlintCfg) => {
+  // HDR-эмиттеры №2: блики. Цвет ×N > 1.0 → ядро и лучи блумят, ореол рисует bloom.
+  const addPool = (count: number, tex: THREE.Texture, color: THREE.Color, cfg: GlintCfg) => {
     for (let i = 0; i < count; i++) {
       const mat = new THREE.SpriteMaterial({
         map: tex,
@@ -744,10 +884,11 @@ export function createScene(
         depthTest: false,
         depthWrite: false,
         opacity: 0,
+        toneMapped: false,
       });
       const sprite = new THREE.Sprite(mat);
       sprite.scale.setScalar(0.001);
-      container.add(sprite);
+      glintGroup.add(sprite);
       const gl: Glint = { sprite, age: 0, life: 1, delay: 0, maxScale: 1, peak: 1, cfg };
       spawnGlint(gl, true);
       glints.push(gl);
@@ -784,10 +925,10 @@ export function createScene(
   };
   const heroCount = Math.min(18, Math.max(10, Math.floor(vertsWorld.length * 0.24)));
   const pinCount = Math.min(72, Math.max(34, Math.floor(vertsWorld.length * 1.0)));
-  addPool(heroCount, starTex, 0x9fd0ff, heroCfg);
-  addPool(pinCount, pinTex, 0xcfe6ff, pinCfg);
+  addPool(heroCount, starTex, new THREE.Color(STAR_COLOR).multiplyScalar(STAR_HDR), heroCfg);
+  addPool(pinCount, pinTex, new THREE.Color(PIN_COLOR).multiplyScalar(PIN_HDR), pinCfg);
 
-  // --- дымка свечения за кластером (фейковый bloom-ambient) ---
+  // Широкая синяя «атмосфера» (ниже порога bloom → в свечение не попадает).
   const hazeMat = new THREE.SpriteMaterial({
     map: makeHazeTexture(),
     color: 0x1e5bd6,
@@ -795,12 +936,34 @@ export function createScene(
     transparent: true,
     depthTest: false,
     depthWrite: false,
-    opacity: 0.55,
+    opacity: HAZE_OPACITY,
+    toneMapped: false,
   });
   const haze = new THREE.Sprite(hazeMat);
   haze.scale.setScalar(13);
   haze.position.set(0, 0, -2);
   container.add(haze);
+
+  await chunk('glints');
+
+  // ---- 6. композер: RenderPass → Bloom → ACES ------------------------------
+  // HalfFloat: буфер держит линейные значения > 1.0 (HDR), без него порог bloom
+  // не имел бы смысла (всё клипалось бы в 1.0). multisampling: 0 — MSAA не нужен.
+  const composer = new EffectComposer(renderer, {
+    frameBufferType: THREE.HalfFloatType,
+    multisampling: 0,
+  });
+  const bloom = new BloomEffect({
+    luminanceThreshold: 1.0, // ниже 1.0 остаётся вся геометрия → блумят только эмиттеры
+    luminanceSmoothing: 0.03,
+    mipmapBlur: true,
+    levels: opts.bloomLevels ?? BLOOM_LEVELS,
+    intensity: opts.bloomIntensity ?? BLOOM_INTENSITY,
+    radius: BLOOM_RADIUS,
+  });
+  const toneMapping = new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC });
+  composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(new EffectPass(camera, bloom, toneMapping));
 
   // --- подгонка ортокамеры под кластер: «contain» по экранным экстентам ---
   // Проецируем углы всех блоков на оси камеры (right/up) и берём макс-экстенты,
@@ -837,10 +1000,21 @@ export function createScene(
     camera.top = halfH;
     camera.bottom = -halfH;
     camera.updateProjectionMatrix();
-    renderer.setSize(w, h, false);
+    composer.setSize(w, h, false); // сам зовёт renderer.setSize + ресайзит буферы
   };
   const fit = () => applyFrame(canvas.clientWidth || 1, canvas.clientHeight || 1);
   fit();
+
+  await chunk('composer');
+
+  // ---- 7. прекомпил шейдеров (KHR_parallel_shader_compile, если есть) -----
+  // Постер НЕ кроссфейдится, пока программы не собраны и первый кадр не выведен.
+  try {
+    await renderer.compileAsync(scene, camera);
+  } catch {
+    /* compileAsync не критичен — первый кадр всё равно скомпилирует */
+  }
+  await chunk('compile');
 
   // --- цикл анимации (своё время с клампом dt — без прыжков после паузы) ---
   let simTime = 0;
@@ -851,10 +1025,147 @@ export function createScene(
   const tmp = new THREE.Vector3();
   const { movers, pieceMover } = buildMovers(pieces, rng);
 
+  // -------------------------------------------------------------------------
+  // Экспорт кадра. canvas.toDataURL() делит цвет на альфу (un-premultiply) и
+  // клампит: аддитивное свечение bloom (rgb ≫ alpha над прозрачным фоном) при
+  // этом выжигается в белый и теряется. Поэтому читаем ПРЕМУЛЬТИПЛЕННЫЙ буфер
+  // напрямую и:
+  //   • bg задан → композитим ровно как браузер: out = rgb + bg*(1−a), кадр непрозрачный;
+  //   • bg нет   → чиним альфу: a' = max(a, r, g, b), rgb' = rgb/a'. Обычный source-over
+  //     такого PNG/WebP поверх тёмного фона даёт тот же результат, что аддитивный канвас.
+  // -------------------------------------------------------------------------
+  const exportFrame = (
+    mime: string,
+    quality?: number,
+    bg?: [number, number, number],
+  ): string | null => {
+    const gl = renderer.getContext();
+    const W = gl.drawingBufferWidth;
+    const H = gl.drawingBufferHeight;
+    const src = new Uint8Array(W * H * 4);
+    gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    const out = document.createElement('canvas');
+    out.width = W;
+    out.height = H;
+    const ctx = out.getContext('2d');
+    if (!ctx) return null;
+    const img = ctx.createImageData(W, H);
+    const dst = img.data;
+    for (let y = 0; y < H; y++) {
+      const sRow = (H - 1 - y) * W * 4; // readPixels отдаёт строки снизу вверх
+      const dRow = y * W * 4;
+      for (let x = 0; x < W; x++) {
+        const s = sRow + x * 4;
+        const o = dRow + x * 4;
+        const r = src[s];
+        const g = src[s + 1];
+        const b = src[s + 2];
+        const a = src[s + 3];
+        if (bg) {
+          const k = (255 - a) / 255;
+          dst[o] = Math.min(255, r + bg[0] * k);
+          dst[o + 1] = Math.min(255, g + bg[1] * k);
+          dst[o + 2] = Math.min(255, b + bg[2] * k);
+          dst[o + 3] = 255;
+        } else {
+          const a2 = Math.max(a, r, g, b);
+          if (a2 === 0) continue; // createImageData уже нулевая
+          dst[o] = Math.min(255, Math.round((r * 255) / a2));
+          dst[o + 1] = Math.min(255, Math.round((g * 255) / a2));
+          dst[o + 2] = Math.min(255, Math.round((b * 255) / a2));
+          dst[o + 3] = a2;
+        }
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return out.toDataURL(mime, quality);
+  };
+
+  const handle: SceneHandle = {
+    pieces: pieceObjs,
+    tiltGroup,
+    camera,
+    onFrame: null,
+    setPaused(p: boolean) {
+      if (p === paused) return;
+      paused = p;
+      if (!p) {
+        lastNow = performance.now();
+        loop();
+      } else {
+        cancelAnimationFrame(raf);
+      }
+    },
+    setQuality(q: QualityOptions) {
+      if (q.bloomLevels !== undefined) bloom.mipmapBlurPass.levels = q.bloomLevels;
+      if (q.bloomIntensity !== undefined) bloom.intensity = q.bloomIntensity;
+      if (q.pixelRatio !== undefined) {
+        renderer.setPixelRatio(q.pixelRatio);
+        fit();
+      }
+    },
+    capture() {
+      try {
+        update(0);
+        return exportFrame('image/png');
+      } catch {
+        return null;
+      }
+    },
+    captureAt(
+      w: number,
+      h: number,
+      poseT = 0,
+      mime = 'image/png',
+      quality?: number,
+      bg?: [number, number, number],
+    ) {
+      // Постер: фиксированный размер, поза покоя (по умолчанию t=0 → все сдвиги=0).
+      const prevRatio = renderer.getPixelRatio();
+      const prevTime = simTime;
+      try {
+        renderer.setPixelRatio(1);
+        applyFrame(w, h);
+        simTime = poseT;
+        update(0);
+        return exportFrame(mime, quality, bg);
+      } catch {
+        return null;
+      } finally {
+        simTime = prevTime;
+        renderer.setPixelRatio(prevRatio);
+        fit();
+      }
+    },
+    advance(dt: number) {
+      update(dt);
+    },
+    dispose() {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      composer.dispose();
+      boxGeo.dispose();
+      edgeGeo.dispose();
+      edgeMat.dispose();
+      grainTex.dispose();
+      envRT.texture.dispose();
+      pmrem.dispose();
+      for (const m of bodyMats) m.dispose();
+      starTex.dispose();
+      pinTex.dispose();
+      hazeMat.map?.dispose();
+      hazeMat.dispose();
+      for (const gl of glints) (gl.sprite.material as THREE.SpriteMaterial).dispose();
+      renderer.dispose();
+    },
+  };
+
   const update = (dt: number) => {
     simTime += dt;
     const t = simTime;
     const tLoop = t % LOOP;
+
+    handle.onFrame?.(t, dt); // этап 2: пружины/волны пишут в piece.offset
 
     // Периоды bob/breathe делят LOOP (15с) нацело (7.5=2×, 5=3×) → всё возвращается
     // к нулю в t=0 и t=LOOP: весь цикл (не только сдвиги) бесшовен без единого скачка.
@@ -862,10 +1173,12 @@ export function createScene(
     container.scale.setScalar(1 + Math.sin((t / 5) * Math.PI * 2) * 0.012); // «дыхание» (3 цикла/LOOP)
 
     for (let i = 0; i < pieceObjs.length; i++) {
+      const po = pieceObjs[i];
       const mi = pieceMover[i];
-      if (mi === null) continue;
-      moverOffset(movers[mi], tLoop, tmp);
-      pieceObjs[i].group.position.copy(pieceObjs[i].base).add(tmp);
+      if (mi === null) tmp.set(0, 0, 0);
+      else moverOffset(movers[mi], tLoop, tmp);
+      // база лупа + аддитивный офсет интерактива (этап 2)
+      po.group.position.copy(po.base).add(tmp).add(po.offset);
     }
 
     for (const gl of glints) {
@@ -890,7 +1203,7 @@ export function createScene(
       gl.sprite.scale.setScalar(gl.cfg.minScale + env * gl.maxScale);
     }
 
-    renderer.render(scene, camera);
+    composer.render(dt);
     if (!ready) {
       ready = true;
       opts.onReady?.();
@@ -910,67 +1223,12 @@ export function createScene(
   const ro = new ResizeObserver(() => fit());
   ro.observe(canvas);
 
-  loop();
+  if (opts.capture) {
+    handle.debug = { renderer, scene, camera, composer, bloom, edgeMat, glintGroup, hazeMat };
+  }
 
-  return {
-    setPaused(p: boolean) {
-      if (p === paused) return;
-      paused = p;
-      if (!p) {
-        lastNow = performance.now();
-        loop();
-      } else {
-        cancelAnimationFrame(raf);
-      }
-    },
-    capture() {
-      try {
-        update(0);
-        return canvas.toDataURL('image/png');
-      } catch {
-        return null;
-      }
-    },
-    captureAt(w: number, h: number, poseT = 0) {
-      // Постер: фиксированный размер, поза покоя (по умолчанию t=0 → все сдвиги=0).
-      const prevW = canvas.clientWidth || w;
-      const prevH = canvas.clientHeight || h;
-      const prevRatio = renderer.getPixelRatio();
-      const prevTime = simTime;
-      try {
-        renderer.setPixelRatio(1);
-        applyFrame(w, h);
-        simTime = poseT;
-        update(0);
-        return canvas.toDataURL('image/png');
-      } catch {
-        return null;
-      } finally {
-        simTime = prevTime;
-        renderer.setPixelRatio(prevRatio);
-        renderer.setSize(prevW, prevH, false);
-        fit();
-      }
-    },
-    advance(dt: number) {
-      update(dt);
-    },
-    dispose() {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      boxGeo.dispose();
-      edgeGeo.dispose();
-      edgeMat.dispose();
-      grainTex.dispose();
-      envRT.texture.dispose();
-      pmrem.dispose();
-      for (const m of bodyMats) m.dispose();
-      starTex.dispose();
-      pinTex.dispose();
-      hazeMat.map?.dispose();
-      hazeMat.dispose();
-      for (const gl of glints) (gl.sprite.material as THREE.SpriteMaterial).dispose();
-      renderer.dispose();
-    },
-  };
+  loop();
+  await chunk('first-frame');
+
+  return handle;
 }

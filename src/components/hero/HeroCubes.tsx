@@ -51,7 +51,9 @@ export default function HeroCubes() {
         const { createScene } = await import('./cubeScene');
         if (cancelled) return;
         const debug = location.search.includes('cubesdebug');
-        const handle = createScene(canvas, {
+        // Сборка сцены асинхронная (куски + yield к браузеру + прекомпил шейдеров):
+        // главный поток не блокируется, кроссфейд ждёт готовности первого кадра.
+        const handle = await createScene(canvas, {
           capture: debug, // preserveDrawingBuffer только для дебаг-захвата
           onReady: () => {
             if (!cancelled) setReady(true);
