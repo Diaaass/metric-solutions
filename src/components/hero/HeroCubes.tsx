@@ -87,6 +87,22 @@ export default function HeroCubes({
     };
     applyPauseRef.current = applyPause;
 
+    /**
+     * Возврат к постеру — общий финал для потери WebGL-контекста и для исчерпанной
+     * лесенки деградации. Сначала кроссфейд (ready=false), и только после его
+     * окончания dispose: если освободить ресурсы сразу, канвас погаснет рывком
+     * посреди перехода. Повторные вызовы безвредны — сцену чистим один раз.
+     */
+    const fallbackToPoster = () => {
+      if (cancelled || !sceneRef.current) return;
+      setReady(false);
+      interactRef.current?.dispose();
+      interactRef.current = null;
+      const dying = sceneRef.current;
+      sceneRef.current = null;
+      setTimeout(() => dying.dispose(), 800); // 700мс кроссфейд + запас
+    };
+
     const create = async () => {
       if (sceneRef.current || creating || cancelled) return;
       creating = true;
@@ -105,6 +121,8 @@ export default function HeroCubes({
           onReady: () => {
             if (!cancelled) setReady(true);
           },
+          onContextLost: () => fallbackToPoster(),
+          onExhausted: () => fallbackToPoster(),
         });
         if (!handle) return; // нет WebGL → остаётся постер
         if (cancelled) {

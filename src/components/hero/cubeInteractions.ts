@@ -145,7 +145,12 @@ export function attachInteractions(
   const rng = mulberry32(0x5eed2026);
 
   // --- состояние ------------------------------------------------------------
-  const coarse = window.matchMedia('(hover: none)').matches; // тач → дрейф вместо слежения
+  // Тач → автодрейф вместо слежения за курсором. ?cubestouch=1 включает ту же
+  // ветку на десктопе: иначе тач-поведение нечем проверить в headless-прогоне
+  // (matchMedia там всегда hover:hover). На боевом трафике флага нет, поведение
+  // определяет только медиазапрос.
+  const coarse =
+    window.matchMedia('(hover: none)').matches || location.search.includes('cubestouch');
   let enabled = true; // debug: полное отключение (проверка бесшовности лупа)
   let active = true; // кнопка паузы
   let drift = coarse; // автодрейф наклона
