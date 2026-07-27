@@ -19,12 +19,13 @@ export default function Hero({ t, base }: { t: Translation['hero']; base: string
       />
 
       {/* 3D-кластер справа сверху (как в макете — наезжает на верх).
-          Внутри: статичный постер (LCP) + ленивая three-сцена с кроссфейдом. */}
-      <div
-        className="pointer-events-none absolute right-[-1%] top-[-7%] hidden w-[26%] lg:block"
-        aria-hidden="true"
-      >
-        <HeroCubes />
+          Внутри: статичный постер (LCP) + ленивая three-сцена с кроссфейдом.
+          Блок pointer-events-none (ссылки слева должны кликаться), само
+          изображение и канвас декоративные (alt="" / aria-hidden), а вот кнопку
+          паузы внутри прятать от скринридеров нельзя — поэтому aria-hidden
+          висит на детях, а не на обёртке. */}
+      <div className="pointer-events-none absolute right-[-1%] top-[-7%] hidden w-[26%] lg:block">
+        <HeroCubes pauseLabel={t.pauseAnimation} playLabel={t.playAnimation} />
       </div>
 
       <Container>

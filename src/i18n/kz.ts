@@ -22,6 +22,8 @@ const kz: Translation = {
     stat1LabelAccent: 'NomadLab және Nomad Pilot Plant',
     stat2Value: 'ОА ТМД',
     stat2Label: 'Жобалар географиясы және халықаралық нарықтар',
+    pauseAnimation: 'Анимацияны тоқтату',
+    playAnimation: 'Анимацияны жалғастыру',
   },
 
   homeAbout: {

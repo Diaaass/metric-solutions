@@ -50,6 +50,25 @@ export interface CubePiece {
   readonly offset: THREE.Vector3;
 }
 
+/**
+ * Тест-хуки интерактива (этап 2). Заполняются контроллером cubeInteractions
+ * при ?cubesdebug — сцена сама их не реализует, ей нужен только слот в типе.
+ */
+export interface InteractDebug {
+  /** Синтетический указатель в NDC канваса: x вправо, y вверх, обе [-1,1]. */
+  setPointer: (nx: number, ny: number) => void;
+  /** Убрать указатель (как pointerleave) — всё возвращается к нейтрали. */
+  clearPointer: () => void;
+  /** Волна из точки NDC (как pointerdown). */
+  triggerWave: (nx: number, ny: number) => void;
+  /** Полностью выключить интерактив и обнулить офсеты (проверка лупа). */
+  setEnabled: (on: boolean) => void;
+  /** Автодрейф наклона (тач-режим) — при детерминированных захватах выключать. */
+  setDrift: (on: boolean) => void;
+  /** Снимок состояния интерактива (офсеты блоков, наклон, волны, цена кадра). */
+  dump: () => unknown;
+}
+
 /** Настройки качества (этап 3: лесенка деградации). */
 export interface QualityOptions {
   /** Кол-во MIP-уровней блюра bloom: 8 desktop, 4–5 mobile. */
@@ -86,6 +105,12 @@ export interface SceneHandle {
   pieces: readonly CubePiece[];
   /** Группа-обёртка над кластером: наклон/параллакс от курсора (этап 2). */
   tiltGroup: THREE.Group;
+  /**
+   * Группа самого кластера (внутри tiltGroup, несёт bob/breathe). Координаты
+   * piece.base заданы в ЕЁ системе — этап 2 переводит сюда точку луча
+   * (cluster.worldToLocal), чтобы наклон/дыхание не сбивали репульсию.
+   */
+  cluster: THREE.Group;
   /** Ортокамера сцены (этап 2: raycast курсора в плоскость кластера). */
   camera: THREE.OrthographicCamera;
   /** Колбэк перед каждым кадром — этап 2 считает здесь пружины/волны. */
@@ -108,6 +133,8 @@ export interface SceneDebug {
   glintGroup: THREE.Group;
   /** Материал широкой синей «атмосферы». */
   hazeMat: THREE.SpriteMaterial;
+  /** Тест-хуки интерактива — ставит контроллер cubeInteractions (этап 2). */
+  interact?: InteractDebug;
 }
 
 export interface SceneOptions extends QualityOptions {
@@ -141,6 +168,8 @@ const SEED = 20260722; // фикс-сид: стабильный кластер �
 const CUBE = 1; // ребро куба (world units)
 const GAP = 0.05; // микро-зазор между кубами, чтобы читались рёбра-подразбивка граней
 const STEP = CUBE + GAP; // шаг сетки
+/** Шаг сетки кластера в world units — интерактив (этап 2) меряет всё в них. */
+export const GRID_STEP = STEP;
 const LOOP = 15; // период бесшовного цикла сдвигов, сек
 const SLAB_TARGET = 4; // сколько блоков 1×2 попытаться собрать (немного, ради вариативности)
 
@@ -1084,6 +1113,7 @@ export async function createScene(
   const handle: SceneHandle = {
     pieces: pieceObjs,
     tiltGroup,
+    cluster: container,
     camera,
     onFrame: null,
     setPaused(p: boolean) {

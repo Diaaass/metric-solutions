@@ -22,6 +22,8 @@ const ru: Translation = {
     stat1LabelAccent: 'NomadLab и Nomad Pilot Plant',
     stat2Value: 'ЦА СНГ',
     stat2Label: 'География проектов и международные рынки',
+    pauseAnimation: 'Остановить анимацию',
+    playAnimation: 'Возобновить анимацию',
   },
 
   homeAbout: {
