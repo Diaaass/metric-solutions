@@ -45,6 +45,11 @@ export interface CubePiece {
   /** Половинные размеры блока (хитбокс для raycast/репульсии). */
   readonly half: THREE.Vector3;
   /**
+   * Нормаль грани большого куба, на которой сидит блок (единичная, в системе
+   * кластера). Этап 2 двигает блок ТОЛЬКО вдоль неё — как панели в референсе.
+   */
+  readonly normal: THREE.Vector3;
+  /**
    * Аддитивный офсет интерактива — этап 2 (репульсия/волны) пишет СЮДА.
    * Итог: position = base + офсет фонового лупа + offset. Луп не ломается.
    */
@@ -89,6 +94,14 @@ export interface QualityOptions {
    * стала плоской. Нижняя ступень лесенки деградации.
    */
   bloom?: boolean;
+  /**
+   * Преломление в стекле (MeshPhysicalMaterial.transmission). Стоит целого
+   * дополнительного прохода сцены в transmission-таргет. false — стекло
+   * становится непрозрачным тёмным (как до этапа 4), картинка беднеет, но
+   * кадр дешевеет примерно вдвое по геометрии. Ступень лесенки между
+   * «bloom levels → 4» и «bloom выключен».
+   */
+  transmission?: boolean;
 }
 
 export interface SceneHandle {
@@ -139,8 +152,12 @@ export interface SceneDebug {
   camera: THREE.OrthographicCamera;
   composer: EffectComposer;
   bloom: BloomEffect;
-  /** Материал рёбер — .visible=false скрывает все рёбра (замер спекуляров). */
+  /** Материал всех линий (контуры панелей + силуэт): .visible=false — замер спекуляров. */
   edgeMat: THREE.LineBasicMaterial;
+  /** Материал светящегося внутреннего слоя: .visible=false гасит свет в швах. */
+  seamMat: THREE.MeshStandardMaterial;
+  /** Внутренний слой целиком — прячется вместе со своим светом. */
+  seamLayer: THREE.Mesh;
   /** Группа всех спрайтов-бликов — .visible=false скрывает блики. */
   glintGroup: THREE.Group;
   /** Материал широкой синей «атмосферы». */
@@ -195,18 +212,40 @@ const easeInOutCubic = (x: number): number =>
 // Параметры сцены (крутятся при визуальной сверке с референсом).
 // ---------------------------------------------------------------------------
 const SEED = 20260722; // фикс-сид: стабильный кластер и расписание сдвигов
-const CUBE = 1; // ребро куба (world units)
-const GAP = 0.05; // микро-зазор между кубами, чтобы читались рёбра-подразбивка граней
+// Замер по утверждённому макету (figma/export.png): объект выше, чем куб —
+// отношение экранных габаритов h/w ≈ 1.47, тогда как ровный куб в этой изометрии
+// даёт 1.12. Значит по вертикали ячеек больше: 4×5×4 (+ рельеф) даёт ≈1.4.
+// Силуэт при этом остаётся силуэтом одного большого блока, как требует клиент.
+const N = 4; // ячеек по горизонтали (X и Z)
+const NY = 5; // ячеек по вертикали
+const CUBE = 1; // ребро ячейки (world units)
+const GAP = 0.05; // шов между ячейками: сквозь него видно светящийся внутренний слой
 const STEP = CUBE + GAP; // шаг сетки
 /** Шаг сетки кластера в world units — интерактив (этап 2) меряет всё в них. */
 export const GRID_STEP = STEP;
+/** Полуразмер большого куба до ВНЕШНЕЙ поверхности (центр крайней ячейки + half). */
+const SURF = ((N - 1) / 2) * STEP + CUBE / 2;
+/** То же по вертикали. */
+const SURF_Y = ((NY - 1) / 2) * STEP + CUBE / 2;
+/**
+ * Насколько светящийся внутренний слой утоплен под внешнюю поверхность.
+ * Держим МИНИМАЛЬНЫМ: шов узкий (GAP), и на изо-угле (~35° к нормали) уже при
+ * утоплении в половину его ширины дно шва уходит за собственную стенку — свечение
+ * пропадает. 0.015 хватает, чтобы не было z-файтинга с гранями ячеек.
+ */
+const SEAM_SINK = 0.015;
 const LOOP = 15; // период бесшовного цикла сдвигов, сек
-const SLAB_TARGET = 4; // сколько блоков 1×2 попытаться собрать (немного, ради вариативности)
 
 // --- HDR-эмиттеры: множители цвета ВЫШЕ 1.0 → проходят порог bloom (1.0) ---
 // Только эти объекты светятся; тонмаппинг к ним не применяется (toneMapped:false).
-const EDGE_COLOR = 0xb2cff0;
-const EDGE_HDR = 3.0; // рёбра: linear(EDGE_COLOR)*3.0*0.46 → lum ≈ 0.87; порог берут поверх светлых топов
+// Рёбра ВЫДВИНУТЫХ панелей — тот самый тонкий белый контур по периметру панели
+// из референса. Отдельный материал: у панелей он ярче и полностью непрозрачный.
+const RIM_COLOR = 0xdce9ff;
+const RIM_HDR = 3.0;
+// Светящийся внутренний слой (свет ИЗНУТРИ куба, вытекающий в швы). Эмиссия
+// модулируется картой-сеткой: линии по границам ячеек ярче 1.0 → берут порог bloom.
+const SEAM_COLOR = 0x2f86ff;
+const SEAM_HDR = 4.4;
 const STAR_COLOR = 0x5aaeff; // насыщённо-синий: ядро после ACES уходит в белый, ореол остаётся синим
 const STAR_HDR = 5.0; // ядро крупного блика: lum ≈ 2.3 → уверенно за порогом bloom
 const PIN_COLOR = 0x77bcff;
@@ -454,6 +493,131 @@ function makeGrainTexture(): THREE.Texture {
 }
 
 // ---------------------------------------------------------------------------
+// Карта СВЕТА ИЗНУТРИ. Кладётся эмиссией на «внутренний слой» — куб чуть меньше
+// внешней поверхности оболочки. Оболочка (ячейки) его закрывает, и наружу свет
+// выходит только там, где в ней есть щель: в ШВАХ между ячейками и в «колодцах»,
+// открывшихся под выдвинутыми панелями. Отсюда и берётся картинка референса —
+// светящаяся сетка швов и звёзды на их пересечениях.
+//
+// Сетка нарисована по границам ячеек (u,v = 0, 1/N … 1): широкий мягкий ореол
+// (ниже порога bloom, красит стекло вокруг) + тонкое ядро (ярче 1.0 → блумит).
+// ---------------------------------------------------------------------------
+function makeSeamTexture(cu: number, cv: number, halfU: number, halfV: number): THREE.Texture {
+  const S = 512;
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = S;
+  const ctx = cnv.getContext('2d')!;
+  const rng = mulberry32(0x51ea3);
+
+  // Слой чуть меньше куба, поэтому позицию линии считаем ИЗ МИРОВЫХ координат
+  // границы ячейки, а не как n/N: иначе сетка света разъезжается со швами на
+  // величину порядка самого шва — и швы перестают светиться.
+  const atU = (n: number) => (0.5 + ((n - cu / 2) * STEP) / (2 * halfU)) * S;
+  const atV = (n: number) => (0.5 + ((n - cv / 2) * STEP) / (2 * halfV)) * S;
+  const cell = Math.min(atU(1) - atU(0), atV(1) - atV(0));
+
+  // 1. НЕ чёрное дно: сквозь стекло (transmission) видно именно его, и если тут
+  //    ноль — грань читается плоской матовой плиткой, а не стеклом. Слабая
+  //    синева + мягкие пятна дают «глубину» внутри объёма.
+  ctx.fillStyle = '#040812';
+  ctx.fillRect(0, 0, S, S);
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 26; i++) {
+    const x = rng() * S;
+    const y = rng() * S;
+    const r = S * (0.04 + rng() * 0.13);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(90,150,255,${0.05 + rng() * 0.07})`);
+    g.addColorStop(1, 'rgba(60,120,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  // Внутренние «царапины» — в референсе сквозь тёмное стекло видны тонкие штрихи.
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 44; i++) {
+    const x = rng() * S;
+    const y = rng() * S;
+    const len = S * (0.03 + rng() * 0.1);
+    const a = (rng() - 0.5) * 0.9 + (rng() < 0.5 ? 0 : Math.PI / 2);
+    ctx.strokeStyle = `rgba(150,190,255,${0.05 + rng() * 0.1})`;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+    ctx.stroke();
+  }
+
+  // 2. Сам шов — ЕЛЕ ЗАМЕТНАЯ линия. Ключевое отличие от «неоновой сетки»: в
+  //    референсе шов сам по себе почти не светится, свет копится в УЗЛАХ.
+  ctx.strokeStyle = 'rgba(120,170,255,0.06)';
+  ctx.lineWidth = 1.2;
+  for (let n = 0; n <= cu; n++) {
+    const x = atU(n);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, S);
+    ctx.stroke();
+  }
+  for (let n = 0; n <= cv; n++) {
+    const y = atV(n);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(S, y);
+    ctx.stroke();
+  }
+
+  // 3. УЗЛЫ: из каждого пересечения свет растекается по швам и быстро гаснет —
+  //    это и даёт «звёзды на пересечениях» и рваный, живой рисунок свечения.
+  //    Длина лучей джиттерится, поэтому сетка не выглядит штампованной.
+  const ray = (x: number, y: number, dx: number, dy: number, len: number, w: number) => {
+    const g = ctx.createLinearGradient(x, y, x + dx * len, y + dy * len);
+    g.addColorStop(0, 'rgba(255,255,255,0.85)');
+    g.addColorStop(0.12, 'rgba(210,235,255,0.34)');
+    g.addColorStop(0.45, 'rgba(150,200,255,0.09)');
+    g.addColorStop(1, 'rgba(120,180,255,0)');
+    ctx.strokeStyle = g;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + dx * len, y + dy * len);
+    ctx.stroke();
+  };
+  for (let a = 0; a <= cu; a++)
+    for (let b = 0; b <= cv; b++) {
+      const x = atU(a);
+      const y = atV(b);
+      const hot = rng();
+      if (hot < 0.34) continue; // большинство пересечений НЕ горит — как в референсе
+      const heat = 0.3 + ((hot - 0.42) / 0.58) * 0.7;
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ] as const)
+        ray(x, y, dx, dy, cell * (0.34 + rng() * 0.46) * heat, 2.4);
+      const halo = ctx.createRadialGradient(x, y, 0, x, y, cell * 0.42);
+      halo.addColorStop(0, `rgba(90,160,255,${0.1 * heat})`);
+      halo.addColorStop(0.4, `rgba(60,130,255,${0.03 * heat})`);
+      halo.addColorStop(1, 'rgba(40,100,230,0)');
+      ctx.fillStyle = halo;
+      ctx.fillRect(x - cell * 0.5, y - cell * 0.5, cell, cell);
+      const core = ctx.createRadialGradient(x, y, 0, x, y, cell * 0.26 * heat);
+      core.addColorStop(0, `rgba(255,255,255,${0.5 + 0.45 * heat})`);
+      core.addColorStop(0.28, `rgba(190,225,255,${0.22 * heat})`);
+      core.addColorStop(1, 'rgba(120,180,255,0)');
+      ctx.fillStyle = core;
+      ctx.fillRect(x - cell * 0.3, y - cell * 0.3, cell * 0.6, cell * 0.6);
+    }
+  ctx.globalCompositeOperation = 'source-over';
+
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+// ---------------------------------------------------------------------------
 // Кастомное окружение (equirect-градиент) → PMREM. Даёт металлу «студийный»
 // отклик: светлое небо сверху (серебристые топы), почти чёрный низ (тёмные бока),
 // два синих пятна по бокам (синие рефлексы в стекле). Собирается на canvas.
@@ -470,14 +634,14 @@ function makeEnvEquirect(): THREE.Texture {
   // боковые ~−33° (v≈0.68). Поэтому «небо» держим белым вплоть до v≈0.38 (яркие серебристые
   // топы), затем резкий спад к почти чёрному (тёмные стеклянные бока).
   const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0.0, '#ffffff');
-  grad.addColorStop(0.34, '#f4f7fd'); // держим яркое небо до зоны отражения топов
-  grad.addColorStop(0.42, '#9fabbd');
+  grad.addColorStop(0.0, '#96a0b2');
+  grad.addColorStop(0.34, '#6e7789'); // этап 4: небо СИЛЬНО темнее — под стекло, не под хром
+  grad.addColorStop(0.42, '#39404e');
   // Ниже 0.5 — зона, которую отражают БОКОВЫЕ грани. Спад делаем резче и глубже:
   // референс (raw1/видео) — почти чёрное глянцевое стекло по бокам, светлое только
   // сверху. Пологий спад давал «серые» бока и съедал контраст между верхом и боком.
-  grad.addColorStop(0.5, '#333c4b');
-  grad.addColorStop(0.6, '#0d121b');
+  grad.addColorStop(0.5, '#171c26');
+  grad.addColorStop(0.6, '#080b12');
   grad.addColorStop(0.72, '#05080e');
   grad.addColorStop(1.0, '#010208');
   ctx.fillStyle = grad;
@@ -485,8 +649,8 @@ function makeEnvEquirect(): THREE.Texture {
 
   // Яркое «key»-пятно у зенита (спереди-справа) — усиливает блик на топах.
   const key = ctx.createRadialGradient(W * 0.64, H * 0.12, 0, W * 0.64, H * 0.12, H * 0.6);
-  key.addColorStop(0, 'rgba(255,255,255,0.9)');
-  key.addColorStop(0.5, 'rgba(244,248,255,0.25)');
+  key.addColorStop(0, 'rgba(255,255,255,0.72)');
+  key.addColorStop(0.5, 'rgba(226,236,255,0.12)');
   key.addColorStop(1, 'rgba(244,248,255,0)');
   ctx.fillStyle = key;
   ctx.fillRect(0, 0, W, H);
@@ -512,9 +676,16 @@ function makeEnvEquirect(): THREE.Texture {
 }
 
 // ---------------------------------------------------------------------------
-// Геометрия кластера: объединение целочисленных параллелепипедов (box-union).
-// Две доли (нижняя + верхняя, смещённая по +x) соединены узкой талией, плюс
-// несколько ступеней-выступов и вырезов — чистый ступенчатый монолит.
+// ГЕОМЕТРИЯ: ОДИН БОЛЬШОЙ КУБ, грань которого подразбита на 4×4 ячейки.
+//
+// Строим только ПОВЕРХНОСТНЫЕ ячейки (внутренние 2×2×2 не видны никогда и в
+// сцену не попадают): 4³ − 2³ = 56 боксов. Каждая ячейка знает НОРМАЛЬ своей
+// грани — вдоль неё она выдвигается/утапливается, вдоль неё же её двигают луп
+// и интерактив. Силуэт при этом остаётся силуэтом одного большого куба, а
+// рельеф — «скульптурой» на его верхней половине, как в референсе.
+//
+// Раскладка рельефа авторская (снята с ref_top_cluster / ref_bottom_cluster):
+// нижняя треть заподлицо — сплошные стеклянные грани со швами; верх сложный.
 // ---------------------------------------------------------------------------
 interface CubeCell {
   i: number;
@@ -522,133 +693,241 @@ interface CubeCell {
   k: number;
 }
 
-// Инклюзивные диапазоны [x0,y0,z0, x1,y1,z1].
-const ADD_BOXES: number[][] = [
-  // ── нижняя доля ──
-  [0, 0, 0, 2, 2, 2], // ядро 3×3×3
-  [3, 0, 0, 3, 1, 1], // ступень вправо (+x)
-  [0, 0, 3, 1, 1, 3], // ступень вперёд-влево (+z)
-  [1, -1, 1, 2, -1, 2], // нижний выступ вниз (ступень)
-  // ── талия (узкая шейка, читается как «две доли») ──
-  [1, 3, 1, 2, 3, 2], // 2×1×2
-  // ── верхняя доля (смещена по +x → ступенчатый стык) ──
-  [1, 4, 0, 3, 6, 2], // ядро 3×3×3
-  [2, 7, 0, 3, 7, 1], // пик 2×1×2 (крупный светлый топ)
-  [1, 4, 3, 2, 5, 3], // ступень вперёд (+z)
-  [4, 5, 0, 4, 6, 1], // ступень вправо (+x)
-];
-// Вырезы (после сложения) — добавляют ступенчатые уступы.
-const NOTCH_BOXES: number[][] = [
-  [3, 6, 2, 3, 6, 2], // срез верх-задне-правого угла
-  [0, 2, 0, 0, 2, 0], // срез верх-задне-левого угла нижней доли
-  [4, 6, 1, 4, 6, 1], // подрез правой ступени
-];
+/** Индексы материалов BoxGeometry: 0:+X 1:−X 2:+Y 3:−Y 4:+Z 5:−Z. */
+const FACE_PX = 0,
+  FACE_PY = 2,
+  FACE_PZ = 4;
 
-function buildVoxels(): CubeCell[] {
-  const present = new Set<string>();
-  const key = (i: number, j: number, k: number) => `${i},${j},${k}`;
-  const fill = (b: number[], add: boolean) => {
-    const [x0, y0, z0, x1, y1, z1] = b;
-    for (let i = x0; i <= x1; i++)
-      for (let j = y0; j <= y1; j++)
-        for (let k = z0; k <= z1; k++) {
-          if (add) present.add(key(i, j, k));
-          else present.delete(key(i, j, k));
-        }
-  };
-  for (const b of ADD_BOXES) fill(b, true);
-  for (const b of NOTCH_BOXES) fill(b, false);
+/**
+ * Нормали трёх видимых граней — ОБЩИЕ синглтоны, а не новые Vector3 на ячейку:
+ * по ним сравнивают «та же грань?» и сборка щитов, и группировка сдвигов лупа
+ * (сравнение по ссылке). Мутировать их нельзя — только читать.
+ */
+const N_PX = Object.freeze(new THREE.Vector3(1, 0, 0)) as THREE.Vector3;
+const N_PY = Object.freeze(new THREE.Vector3(0, 1, 0)) as THREE.Vector3;
+const N_PZ = Object.freeze(new THREE.Vector3(0, 0, 1)) as THREE.Vector3;
 
-  const cells: CubeCell[] = [];
-  Array.from(present).forEach((s) => {
-    const [i, j, k] = s.split(',').map(Number);
-    cells.push({ i, j, k });
-  });
-  // Отбрасываем полностью внутренние кубы (все 6 соседей есть) — они невидимы.
-  return cells.filter(({ i, j, k }) => {
-    return !(
-      present.has(key(i + 1, j, k)) &&
-      present.has(key(i - 1, j, k)) &&
-      present.has(key(i, j + 1, k)) &&
-      present.has(key(i, j - 1, k)) &&
-      present.has(key(i, j, k + 1)) &&
-      present.has(key(i, j, k - 1))
-    );
-  });
+/**
+ * Ячейка оболочки: позиция в сетке, нормаль грани, вылет вдоль неё и то, какая
+ * из шести граней бокса получает «панельный» (матовый) материал.
+ */
+interface ShellCell extends CubeCell {
+  /** Единичная нормаль грани, на которой лежит ячейка (в системе кластера). */
+  n: THREE.Vector3;
+  /** Вылет вдоль нормали в долях ячейки: >0 наружу, <0 утоплена. */
+  out: number;
+  /** Индекс грани бокса под матовое стекло (null — вся ячейка тёмное стекло). */
+  frost: number | null;
+  /** Яркий белый контур по рёбрам (у выдвинутых панелей — как в референсе). */
+  rim: boolean;
+}
+
+// --- Авторские карты рельефа. Значения — вылет в долях ячейки. ---
+// Читаются «как на картинке»: первая строка — верхняя (или дальняя) полоса.
+// F в карте FROST — на внешнюю грань кладётся МАТОВОЕ стекло (светлая панель),
+// S — матовая панель на боковой стенке (видна, когда ячейка верхней грани
+// поднялась и обнажила бок) — так собран крупный светлый щит у вершины куба.
+
+// Грань +Z (передне-левая): строки j = NY-1…0 сверху вниз, столбцы i = 0…3.
+const OUT_PZ = [
+  [0.0, 0.55, 0.0, 0.0],
+  [0.72, 0.72, 0.0, 0.3],
+  [0.0, 0.0, 0.42, 0.0],
+  [0.0, 0.0, 0.18, -0.2],
+  [0.0, 0.0, 0.0, 0.0],
+];
+const FROST_PZ = ['.F..', 'FF..', '..F.', '....', '....'];
+
+// Грань +X (передне-правая): строки j = NY-1…0, столбцы k = 3…0 (ближняя слева).
+const OUT_PX = [
+  [0.0, 0.0, 0.0, 0.0],
+  [0.0, 0.62, 0.0, 0.0],
+  [0.78, 0.78, 0.0, 0.28],
+  [0.0, 0.28, 0.0, -0.14],
+  [0.0, 0.0, 0.0, 0.0],
+];
+const FROST_PX = ['....', '.F..', 'FF..', '....', '....'];
+
+// Грань +Y (верхняя): строки k = 0…3 (дальняя сверху), столбцы i = 0…3.
+const OUT_PY = [
+  [0.0, 0.0, 0.0, 0.0],
+  [0.0, 0.74, 0.0, 0.0],
+  [0.44, 0.74, 0.0, -0.18],
+  [0.0, 0.0, 0.3, 0.0],
+];
+const FROST_PY = ['....', '.S..', '.S..', '..F.'];
+
+/**
+ * Вылет и тип панели для ячейки на конкретной грани.
+ * Возвращает null, если ячейка этой грани не касается.
+ */
+function faceSpec(
+  i: number,
+  j: number,
+  k: number,
+  face: 'px' | 'py' | 'pz',
+): { out: number; frost: string } | null {
+  const lastH = N - 1;
+  const lastV = NY - 1;
+  if (face === 'pz') {
+    if (k !== lastH) return null;
+    return { out: OUT_PZ[lastV - j][i], frost: FROST_PZ[lastV - j][i] };
+  }
+  if (face === 'px') {
+    if (i !== lastH) return null;
+    return { out: OUT_PX[lastV - j][lastH - k], frost: FROST_PX[lastV - j][lastH - k] };
+  }
+  if (j !== lastV) return null;
+  return { out: OUT_PY[k][i], frost: FROST_PY[k][i] };
+}
+
+/**
+ * Оболочка большого куба. Оставляем только ячейки, касающиеся ТРЁХ видимых
+ * граней (+X, +Y, +Z): камера изометрическая и неподвижная, задние 27 ячеек не
+ * видно ни разу — а внутренний светящийся слой их и так закрывает. Силуэт
+ * (шестиугольник) при этом полный: его образует внешняя граница объединения
+ * именно этих трёх граней.
+ */
+function buildShell(): ShellCell[] {
+  const lastH = N - 1;
+  const lastV = NY - 1;
+  const cells: ShellCell[] = [];
+  for (let i = 0; i < N; i++)
+    for (let j = 0; j < NY; j++)
+      for (let k = 0; k < N; k++) {
+        if (i !== lastH && j !== lastV && k !== lastH) continue;
+        const cand = [
+          { f: 'py' as const, n: N_PY, s: faceSpec(i, j, k, 'py') },
+          { f: 'px' as const, n: N_PX, s: faceSpec(i, j, k, 'px') },
+          { f: 'pz' as const, n: N_PZ, s: faceSpec(i, j, k, 'pz') },
+        ].filter((c) => c.s !== null);
+        // Ячейка на ребре принадлежит двум граням — берём ту, где рельеф сильнее
+        // (иначе выступ, заданный на одной карте, «съедался» бы нулём соседней).
+        let best = cand[0];
+        for (const c of cand) if (Math.abs(c.s!.out) > Math.abs(best.s!.out)) best = c;
+        const spec = best.s!;
+        let frost: number | null = null;
+        if (spec.frost === 'F')
+          frost = best.f === 'py' ? FACE_PY : best.f === 'px' ? FACE_PX : FACE_PZ;
+        else if (spec.frost === 'S') frost = FACE_PZ; // бок поднятой верхней ячейки
+        cells.push({
+          i,
+          j,
+          k,
+          n: best.n,
+          out: spec.out,
+          frost,
+          rim: spec.out > 0.02,
+        });
+      }
+  return cells;
 }
 
 // ---------------------------------------------------------------------------
-// Блоки (piece): единичный куб или слэб 1×2, из ячеек сетки в world-координаты.
+// Блоки (piece): ячейка оболочки в world-координатах + нормаль её грани.
+// Размер у всех одинаковый (ребро ячейки) — «слэбов» больше нет: крупные
+// светлые щиты референса собираются не размером блока, а матовым материалом
+// на его внешней грани и вылетом вдоль нормали.
 // ---------------------------------------------------------------------------
 interface PieceDesc {
-  base: THREE.Vector3; // центр блока в world (в покое)
-  size: THREE.Vector3; // размеры в world units (для scale и half-extent)
+  base: THREE.Vector3; // центр блока в системе кластера (в покое, УЖЕ с вылетом)
+  size: THREE.Vector3; // размеры в world units
+  normal: THREE.Vector3; // нормаль грани: вдоль неё ходят луп и интерактив
+  frost: number | null; // индекс грани бокса под матовое стекло
+  rim: boolean; // яркий белый контур по периметру внешней грани
+  outFace: number; // индекс грани BoxGeometry, смотрящей наружу
+  out: number; // вылет в долях ячейки (для расписания сдвигов)
 }
 
-function buildPieces(
-  cells: CubeCell[],
-  rng: () => number,
-  cx: number,
-  cy: number,
-  cz: number,
-): PieceDesc[] {
-  const key = (i: number, j: number, k: number) => `${i},${j},${k}`;
-  const present = new Set(cells.map((c) => key(c.i, c.j, c.k)));
+function buildPieces(cells: ShellCell[]): PieceDesc[] {
+  const c0 = (N - 1) / 2;
+  const c0y = (NY - 1) / 2;
+  const centre = (c: ShellCell) =>
+    new THREE.Vector3((c.i - c0) * STEP, (c.j - c0y) * STEP, (c.k - c0) * STEP).addScaledVector(
+      c.n,
+      c.out * STEP,
+    );
+  const outFaceOf = (n: THREE.Vector3) => (n.y > 0 ? FACE_PY : n.x > 0 ? FACE_PX : FACE_PZ);
+
+  // Крупные светлые щиты референса — ЦЕЛЬНЫЕ пластины, а не два состыкованных
+  // квадрата: между ними нет ни шва, ни второй обводки. Поэтому соседние
+  // матовые ячейки с одинаковым вылетом на одной грани сливаем в один блок 2×1.
+  const key = (c: ShellCell) => `${c.i},${c.j},${c.k}`;
+  const byKey = new Map(cells.map((c) => [key(c), c]));
   const used = new Set<string>();
-  const world = (i: number, j: number, k: number) =>
-    new THREE.Vector3((i - cx) * STEP, (j - cy) * STEP, (k - cz) * STEP);
-  // предпочитаем горизонтальные слэбы (x/z) как в референсе
-  const slabAxes = [
-    [1, 0, 0],
-    [0, 0, 1],
-    [1, 0, 0],
-    [0, 0, 1],
-    [0, 1, 0],
-  ];
-
-  const order = cells
-    .map((c) => ({ c, r: rng() }))
-    .sort((a, b) => a.r - b.r)
-    .map((o) => o.c);
-
   const pieces: PieceDesc[] = [];
-  let slabs = 0;
-  for (const c of order) {
-    const k0 = key(c.i, c.j, c.k);
-    if (used.has(k0)) continue;
-    if (slabs < SLAB_TARGET && rng() < 0.5) {
-      const [ax, ay, az] = slabAxes[Math.floor(rng() * slabAxes.length)];
-      const nk = key(c.i + ax, c.j + ay, c.k + az);
-      if (present.has(nk) && !used.has(nk)) {
-        used.add(k0);
-        used.add(nk);
-        slabs++;
-        const a = world(c.i, c.j, c.k);
-        const b = world(c.i + ax, c.j + ay, c.k + az);
-        pieces.push({
-          base: a.clone().add(b).multiplyScalar(0.5),
-          size: new THREE.Vector3(
-            ax ? STEP + CUBE : CUBE,
-            ay ? STEP + CUBE : CUBE,
-            az ? STEP + CUBE : CUBE,
-          ),
-        });
-        continue;
+
+  for (const c of cells) {
+    if (used.has(key(c))) continue;
+    let mate: ShellCell | undefined;
+    let axis: 'i' | 'k' | null = null;
+    if (c.frost !== null) {
+      // ищем соседа вдоль горизонтали ТОЙ ЖЕ грани
+      // обе стороны: порядок обхода сетки иначе «съедает» пару (сосед уже занят)
+      const ax: 'i' | 'k' = c.n === N_PX ? 'k' : 'i';
+      const dirs: ['i' | 'k', number][] = [
+        [ax, 1],
+        [ax, -1],
+      ];
+      for (const [ax, d] of dirs) {
+        const nb = byKey.get(ax === 'i' ? `${c.i + d},${c.j},${c.k}` : `${c.i},${c.j},${c.k + d}`);
+        if (
+          nb &&
+          !used.has(key(nb)) &&
+          nb.frost === c.frost &&
+          nb.n === c.n &&
+          Math.abs(nb.out - c.out) < 1e-6
+        ) {
+          mate = nb;
+          axis = ax;
+          break;
+        }
       }
     }
-    used.add(k0);
-    pieces.push({ base: world(c.i, c.j, c.k), size: new THREE.Vector3(CUBE, CUBE, CUBE) });
+    if (mate && axis) {
+      used.add(key(c));
+      used.add(key(mate));
+      const base = centre(c).add(centre(mate)).multiplyScalar(0.5);
+      pieces.push({
+        base,
+        size: new THREE.Vector3(
+          axis === 'i' ? STEP + CUBE : CUBE,
+          CUBE,
+          axis === 'k' ? STEP + CUBE : CUBE,
+        ),
+        normal: c.n,
+        frost: c.frost,
+        rim: c.rim,
+        outFace: outFaceOf(c.n),
+        out: c.out,
+      });
+      continue;
+    }
+    used.add(key(c));
+    pieces.push({
+      base: centre(c),
+      size: new THREE.Vector3(CUBE, CUBE, CUBE),
+      normal: c.n,
+      frost: c.frost,
+      rim: c.rim,
+      outFace: outFaceOf(c.n),
+      out: c.out,
+    });
   }
   return pieces;
 }
 
 // ---------------------------------------------------------------------------
 // Расписание сдвигов: детерминированное, бесшовное (в t=0 и t=LOOP смещения=0).
-// Группировка соседей — по world-дистанции (работает и для слэбов).
+// ГЛАВНОЕ ОТЛИЧИЕ ОТ ПРЕЖНЕЙ ВЕРСИИ: блок ходит не вдоль мировой оси, а вдоль
+// НОРМАЛИ СВОЕЙ ГРАНИ — ровно как панели на видео-референсе, которые выезжают
+// из большого куба «наружу» и возвращаются обратно. Поэтому в Mover лежит только
+// СКАЛЯРНАЯ дистанция, а направление берётся у каждого блока своё.
 // ---------------------------------------------------------------------------
 interface Mover {
   idx: number[];
-  axis: THREE.Vector3;
+  /** Знаковая дистанция вдоль нормали блока (world units). */
+  dist: number;
   tOut: number;
   dOut: number;
   tBack: number;
@@ -659,14 +938,6 @@ function buildMovers(
   pieces: PieceDesc[],
   rng: () => number,
 ): { movers: Mover[]; pieceMover: (number | null)[] } {
-  const axes = [
-    new THREE.Vector3(STEP, 0, 0),
-    new THREE.Vector3(-STEP, 0, 0),
-    new THREE.Vector3(0, STEP, 0),
-    new THREE.Vector3(0, -STEP, 0),
-    new THREE.Vector3(0, 0, STEP),
-    new THREE.Vector3(0, 0, -STEP),
-  ];
   const pieceMover: (number | null)[] = new Array(pieces.length).fill(null);
   const movers: Mover[] = [];
   const EVENTS = 13;
@@ -684,9 +955,12 @@ function buildMovers(
 
     const group = [seed];
     const base0 = pieces[seed].base;
+    const n0 = pieces[seed].normal;
     const near: number[] = [];
     for (let i = 0; i < pieces.length; i++) {
       if (i === seed || pieceMover[i] !== null) continue;
+      // соседей берём ТОЛЬКО с той же грани: группа должна ехать в одну сторону
+      if (pieces[i].normal !== n0) continue;
       if (pieces[i].base.distanceTo(base0) < STEP * 1.55) near.push(i);
     }
     near.sort(() => rng() - 0.5);
@@ -696,7 +970,11 @@ function buildMovers(
       group.push(i);
     }
 
-    const axis = axes[Math.floor(rng() * axes.length)];
+    // Уже выдвинутая панель охотнее УТАПЛИВАЕТСЯ обратно в грань, заподлицо
+    // лежащая — выезжает наружу: так рельеф всё время перекладывается, а куб
+    // не «распухает» от того, что все панели поехали в одну сторону.
+    const amp = (0.34 + rng() * 0.42) * STEP;
+    const dist = pieces[seed].out > 0.2 ? (rng() < 0.72 ? -amp : amp) : amp;
     const dOut = 1.0 + rng() * 0.5; // ~1.0–1.5s
     const dBack = 1.0 + rng() * 0.5;
     const margin = 0.4;
@@ -705,24 +983,20 @@ function buildMovers(
     const tOut = margin + rng() * (LOOP - total - 2 * margin);
     const tBack = tOut + dOut + hold;
 
-    const mi = movers.push({ idx: group, axis, tOut, dOut, tBack, dBack }) - 1;
+    const mi = movers.push({ idx: group, dist, tOut, dOut, tBack, dBack }) - 1;
     for (const i of group) pieceMover[i] = mi;
   }
 
   return { movers, pieceMover };
 }
 
-function moverOffset(m: Mover, tLoop: number, out: THREE.Vector3): void {
-  out.set(0, 0, 0);
-  if (tLoop >= m.tOut && tLoop < m.tOut + m.dOut) {
-    const p = easeInOutCubic((tLoop - m.tOut) / m.dOut);
-    out.copy(m.axis).multiplyScalar(p);
-  } else if (tLoop >= m.tOut + m.dOut && tLoop < m.tBack) {
-    out.copy(m.axis);
-  } else if (tLoop >= m.tBack && tLoop < m.tBack + m.dBack) {
-    const p = easeInOutCubic(1 - (tLoop - m.tBack) / m.dBack);
-    out.copy(m.axis).multiplyScalar(p);
-  }
+/** Фаза сдвига 0…1 (0 в t=0 и t=LOOP → цикл бесшовен). */
+function moverPhase(m: Mover, tLoop: number): number {
+  if (tLoop >= m.tOut && tLoop < m.tOut + m.dOut) return easeInOutCubic((tLoop - m.tOut) / m.dOut);
+  if (tLoop >= m.tOut + m.dOut && tLoop < m.tBack) return 1;
+  if (tLoop >= m.tBack && tLoop < m.tBack + m.dBack)
+    return easeInOutCubic(1 - (tLoop - m.tBack) / m.dBack);
+  return 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -808,6 +1082,10 @@ export async function createScene(
     opts.pixelRatio ?? Math.max(1.5, Math.min(window.devicePixelRatio || 1, 2)),
   );
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // Сквозь стекло видно размытый по roughness внутренний слой — полное
+  // разрешение буфера преломления там не читается, а RT у него с MSAA×4 и
+  // мип-цепочкой. 0.6 экономит и память, и время первого кадра.
+  renderer.transmissionResolutionScale = 0.6;
   // Тонмаппинг УБРАН из материалов: буфер композера линейный HDR, ACES применяет
   // ToneMappingEffect уже ПОСЛЕ bloom. Экспозиция уезжает в шейдер эффекта
   // автоматически (three заливает uniform toneMappingExposure в любой материал).
@@ -830,9 +1108,9 @@ export async function createScene(
   // --- свет: сильный верхний key (светлый серебристо-синий верх),
   //     очень низкий ambient/hemi → боковые грани уходят почти в чёрный,
   //     синий контровой сзади + мягкий синий подсвет спереди-снизу («стекло») ---
-  const hemi = new THREE.HemisphereLight(0x565b64, 0x01040a, 0.1); // нейтральное небо → топы без синевы
+  const hemi = new THREE.HemisphereLight(0x3c4048, 0x01040a, 0.08); // нейтральное небо → топы без синевы
   scene.add(hemi);
-  const key = new THREE.DirectionalLight(0xf8faff, 2.3); // резкий блик на верхних рёбрах (спекуляр)
+  const key = new THREE.DirectionalLight(0xf8faff, 1.5); // этап 4: стекло, не металл — key вдвое тише
   key.position.set(1.5, 12.5, 3.0);
   scene.add(key);
   const rimBack = new THREE.DirectionalLight(0x2b5cff, 0.6); // синий контровой сзади (акцент)
@@ -857,100 +1135,255 @@ export async function createScene(
 
   // ---- 3. геометрия + «наклёпанная» карта (bump + roughness) --------------
   const boxGeo = new THREE.BoxGeometry(CUBE, CUBE, CUBE);
-  const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+  /**
+   * Рамка по периметру ОДНОЙ грани единичного бокса (индексы как у BoxGeometry).
+   * Именно она даёт тонкую белую обводку панели из референса; полный
+   * EdgesGeometry давал бы «проволочный кубик» с яркой линией посередине выступа.
+   */
+  const faceOutlineGeo = (face: number): THREE.BufferGeometry => {
+    const h = CUBE / 2;
+    const ax = face >> 1; // 0:X 1:Y 2:Z
+    const sign = face % 2 === 0 ? h : -h;
+    const u = (ax + 1) % 3;
+    const v = (ax + 2) % 3;
+    const corner = (su: number, sv: number) => {
+      const c = [0, 0, 0];
+      c[ax] = sign;
+      c[u] = su * h;
+      c[v] = sv * h;
+      return c;
+    };
+    const q = [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)];
+    const pos: number[] = [];
+    for (let i = 0; i < 4; i++) pos.push(...q[i], ...q[(i + 1) % 4]);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    return g;
+  };
+  const outlineGeos = [0, 1, 2, 3, 4, 5].map(faceOutlineGeo);
+  const boxEdgeGeo = new THREE.EdgesGeometry(boxGeo);
   const grainTex = makeGrainTexture();
-  // HDR-эмиттер №1: рёбра. Цвет ×EDGE_HDR > 1.0 → проходят порог bloom.
-  const edgeMat = new THREE.LineBasicMaterial({
-    color: new THREE.Color(EDGE_COLOR).multiplyScalar(EDGE_HDR),
+  // HDR-эмиттер №1: контур выдвинутых панелей и внешний силуэт большого куба —
+  // та самая тонкая белая обводка референса. Цвет ×RIM_HDR > 1.0 → проходит
+  // порог bloom. Ячейки заподлицо рёбер НЕ получают: их границу рисует шов.
+  // Волосяная белая линия по границе ячейки — сетка швов референса. LDR
+  // (множитель 1.0), порог bloom не берёт: светится не она, а свет в шве.
+  const seamLineMat = new THREE.LineBasicMaterial({
+    color: new THREE.Color(RIM_COLOR),
     transparent: true,
-    opacity: 0.46,
+    opacity: 0.18,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  // Слабая «формообразующая» обводка выступов: ниже порога bloom, не блумит.
+  const formMat = new THREE.LineBasicMaterial({
+    color: new THREE.Color(RIM_COLOR),
+    transparent: true,
+    opacity: 0.13,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const rimMat = new THREE.LineBasicMaterial({
+    color: new THREE.Color(RIM_COLOR).multiplyScalar(RIM_HDR),
+    transparent: true,
+    opacity: 1,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     toneMapped: false,
   });
 
-  const cells = buildVoxels();
-  let cx = 0,
-    cy = 0,
-    cz = 0;
-  for (const c of cells) {
-    cx += c.i;
-    cy += c.j;
-    cz += c.k;
-  }
-  cx /= cells.length;
-  cy /= cells.length;
-  cz /= cells.length;
-
-  const pieces = buildPieces(cells, rng, cx, cy, cz);
+  const cells = buildShell();
+  const pieces = buildPieces(cells);
 
   await chunk('geometry');
 
   // ---- 4. меши блоков (батчами, с отдачей потока между батчами) -----------
-  // У каждого блока свой материал (джиттер яркости/шероховатости).
+  // МАТЕРИАЛ — ТЁМНОЕ СТЕКЛО (MeshPhysicalMaterial + transmission), а не металл:
+  // клиент отклонил «хром». three рендерит прозрачные материалы отдельным проходом
+  // в transmission-таргет, куда попадает ТОЛЬКО непрозрачная геометрия — именно
+  // поэтому светящийся внутренний слой (см. seamLayer) виден СКВОЗЬ грани
+  // размытым по roughness: свет читается как идущий изнутри объёма, а не
+  // нарисованный поверх. attenuationColor/Distance гасят проходящий свет в
+  // глубокую синь, так что двойная толщина уходит почти в чёрное.
   interface PieceObj {
     group: THREE.Group;
     base: THREE.Vector3;
     half: THREE.Vector3;
     offset: THREE.Vector3;
+    normal: THREE.Vector3;
   }
   const pieceObjs: PieceObj[] = [];
-  const bodyMats: THREE.MeshStandardMaterial[] = [];
-  const baseColor = new THREE.Color(0xb4b9c2); // светлый нейтральный → серебристый рефлекс
-  const BATCH = 16;
+  const bodyMats: THREE.MeshPhysicalMaterial[] = [];
+  /** Стекло: слот для лесенки деградации (transmission → 0 на слабых GPU). */
+  const glassMats: THREE.MeshPhysicalMaterial[] = [];
+
+  const GLASS_COLOR = 0x070a12; // почти чёрный сине-графитовый
+  const FROST_COLOR = 0x939cab; // светлая матовая панель (главный светлый акцент)
+  const ATTEN_COLOR = 0x0d1f52; // синева в толще стекла
+
+  const makeGlass = (): THREE.MeshPhysicalMaterial => {
+    const m = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color(GLASS_COLOR).multiplyScalar(0.85 + rng() * 0.3),
+      metalness: 0.1,
+      roughness: 0.13 + rng() * 0.14,
+      roughnessMap: grainTex,
+      transmission: 0.8,
+      thickness: 0.95,
+      ior: 1.5,
+      attenuationColor: new THREE.Color(ATTEN_COLOR),
+      attenuationDistance: 2.1,
+      specularIntensity: 0.66,
+      envMapIntensity: 0.48 + rng() * 0.08,
+    });
+    m.userData.transmission = m.transmission;
+    m.userData.envMapIntensity = m.envMapIntensity;
+    bodyMats.push(m);
+    glassMats.push(m);
+    return m;
+  };
+  // Матовое стекло: сильно шероховатое, почти непрозрачное, светлое — те самые
+  // серые «наждачные» щиты референса. Зерно (grainTex) отрабатывает на полную.
+  const makeFrost = (): THREE.MeshPhysicalMaterial => {
+    const m = new THREE.MeshPhysicalMaterial({
+      color: new THREE.Color(FROST_COLOR).multiplyScalar(0.9 + rng() * 0.3),
+      metalness: 0.0,
+      roughness: 0.46 + rng() * 0.26,
+      roughnessMap: grainTex,
+      bumpMap: grainTex,
+      bumpScale: 0.16,
+      transmission: 0.26,
+      thickness: 0.5,
+      ior: 1.45,
+      attenuationColor: new THREE.Color(0x2a3550),
+      attenuationDistance: 0.9,
+      specularIntensity: 0.6,
+      envMapIntensity: 1.05 + rng() * 0.2,
+    });
+    m.userData.transmission = m.transmission;
+    m.userData.envMapIntensity = m.envMapIntensity;
+    bodyMats.push(m);
+    glassMats.push(m);
+    return m;
+  };
+
+  const BATCH = 12;
   for (let start = 0; start < pieces.length; start += BATCH) {
     for (const p of pieces.slice(start, start + BATCH)) {
-      const mat = new THREE.MeshStandardMaterial({
-        // зеркальный тёмный «хром»: топы ловят белое небо окружения → серебро; бока → чёрное
-        color: baseColor.clone().multiplyScalar(0.86 + rng() * 0.26), // ±яркость на блок
-        metalness: 0.78 + rng() * 0.12,
-        roughness: 0.28 + rng() * 0.2,
-        roughnessMap: grainTex,
-        bumpMap: grainTex,
-        bumpScale: 0.04,
-        envMapIntensity: 1.1 + rng() * 0.18,
-        emissive: 0x050609,
-      });
-      bodyMats.push(mat);
+      let matArg: THREE.Material | THREE.Material[];
+      if (p.frost === null) {
+        matArg = makeGlass();
+      } else {
+        // Панель = бокс, у которого ВНЕШНЯЯ грань матовая, а бока остаются
+        // тёмным стеклом: в референсе у светлых щитов видно тёмную «толщину».
+        const glass = makeGlass();
+        const arr: THREE.Material[] = [glass, glass, glass, glass, glass, glass];
+        arr[p.frost] = makeFrost();
+        matArg = arr;
+      }
 
       const g = new THREE.Group();
       g.position.copy(p.base);
-      g.scale.copy(p.size); // единичный бокс → размер блока (слэб = длиннее по одной оси)
-      const mesh = new THREE.Mesh(boxGeo, mat);
+      g.scale.copy(p.size); // единичный бокс → размер блока (щит = слэб 2×1)
+      const mesh = new THREE.Mesh(boxGeo, matArg);
       g.add(mesh);
-      g.add(new THREE.LineSegments(edgeGeo, edgeMat));
+      // Швы читаются двумя материалами: тусклый — по всем ячейкам (подразбивка
+      // граней), яркий белый — по периметру выдвинутых панелей (контур в референсе).
+      // Рёбра — ТОЛЬКО у выдвинутых панелей (тонкий белый контур референса).
+      // У ячеек заподлицо граница читается самим швом: тёмная канавка шириной
+      // GAP, на дне которой светится внутренний слой. Белая обводка каждой
+      // ячейки превращала куб в проволочную сетку — в референсе её нет.
+      if (p.rim) {
+        g.add(new THREE.LineSegments(boxEdgeGeo, formMat));
+        g.add(new THREE.LineSegments(outlineGeos[p.frost ?? p.outFace], rimMat));
+      } else {
+        g.add(new THREE.LineSegments(outlineGeos[p.outFace], seamLineMat));
+      }
       container.add(g);
       pieceObjs.push({
         group: g,
         base: p.base,
         half: p.size.clone().multiplyScalar(0.5),
         offset: new THREE.Vector3(),
+        normal: p.normal,
       });
     }
     await chunk('meshes');
   }
 
+  // ---- 4b. СВЕТ ИЗНУТРИ: непрозрачный слой под самой поверхностью ----------
+  // Куб чуть меньше внешней поверхности оболочки, с эмиссионной картой-сеткой.
+  // Ячейки его закрывают, наружу свет пробивается только сквозь ШВЫ (щель GAP)
+  // и «колодцы» под выдвинутыми панелями. Он же — единственное, что попадает в
+  // transmission-таргет за стеклом, поэтому сквозь грани видно именно его.
+  // Блок не кубический (4×5×4), поэтому карт света две: для боковых граней
+  // (по горизонтали 4 ячейки, по вертикали 5) и для верхней/нижней (4×4).
+  // Порядок групп BoxGeometry: 0:+X 1:−X 2:+Y 3:−Y 4:+Z 5:−Z; у боковых граней
+  // UV идут вдоль (Z,Y) и (X,Y), у горизонтальных — вдоль (X,Z).
+  const halfH = SURF - SEAM_SINK;
+  const halfV = SURF_Y - SEAM_SINK;
+  const seamTexSide = makeSeamTexture(N, NY, halfH, halfV);
+  const seamTexTop = makeSeamTexture(N, N, halfH, halfH);
+  const makeSeamMat = (map: THREE.Texture) =>
+    new THREE.MeshStandardMaterial({
+      color: 0x000000,
+      roughness: 1,
+      metalness: 0,
+      emissive: new THREE.Color(SEAM_COLOR),
+      emissiveMap: map,
+      emissiveIntensity: SEAM_HDR,
+    });
+  const seamMat = makeSeamMat(seamTexSide);
+  const seamMatTop = makeSeamMat(seamTexTop);
+  const seamMats = [seamMat, seamMatTop];
+  const seamGeo = new THREE.BoxGeometry(1, 1, 1);
+  const seamLayer = new THREE.Mesh(seamGeo, [
+    seamMat,
+    seamMat,
+    seamMatTop,
+    seamMatTop,
+    seamMat,
+    seamMat,
+  ]);
+  seamLayer.scale.set(halfH * 2, halfV * 2, halfH * 2);
+  container.add(seamLayer);
+
+  // Внешний силуэт большого куба — тонкая яркая линия по 12 рёбрам. В референсе
+  // силуэт очерчен чётко и ярко, тогда как швы внутри граней еле намечены; из
+  // одних только рёбер ячеек такого разделения не получить. Чуть больше куба,
+  // чтобы не z-файтить с гранями крайних ячеек; задние рёбра закрывает
+  // непрозрачный внутренний слой.
+  const silhouette = new THREE.LineSegments(new THREE.EdgesGeometry(seamGeo), rimMat);
+  silhouette.scale.set(SURF * 2 * 1.002, SURF_Y * 2 * 1.002, SURF * 2 * 1.002);
+  container.add(silhouette);
+
+  await chunk('seamlayer');
+
   // ---- 5. блики (два пула HDR-спрайтов) -----------------------------------
-  // Фронтальные вершины блоков — точки, где рождаются блики.
+  // В референсе звёзды сидят НЕ на случайных вершинах, а строго на ПЕРЕСЕЧЕНИЯХ
+  // ШВОВ — там, где свет изнутри собирается в 4-лучевую вспышку. Считаем узлы
+  // сетки на трёх видимых гранях большого куба.
   const camDir = isoDir.clone();
   const vertsWorld: THREE.Vector3[] = [];
-  const signs = [-0.5, 0.5];
-  const seenV = new Set<string>();
-  for (const po of pieceObjs) {
-    for (const sx of signs)
-      for (const sy of signs)
-        for (const sz of signs) {
-          const v = new THREE.Vector3(
-            po.base.x + sx * 2 * po.half.x,
-            po.base.y + sy * 2 * po.half.y,
-            po.base.z + sz * 2 * po.half.z,
-          );
-          if (v.clone().dot(camDir) < 0.2) continue;
-          const kk = `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`;
-          if (seenV.has(kk)) continue;
-          seenV.add(kk);
-          vertsWorld.push(v);
-        }
+  {
+    const seenV = new Set<string>();
+    const at = (n: number) => (n - N / 2) * STEP;
+    const atY = (n: number) => (n - NY / 2) * STEP;
+    const push = (v: THREE.Vector3) => {
+      if (v.clone().dot(camDir) < 0.2) return;
+      const kk = `${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`;
+      if (seenV.has(kk)) return;
+      seenV.add(kk);
+      vertsWorld.push(v);
+    };
+    for (let a = 0; a <= N; a++) {
+      for (let b = 0; b <= NY; b++) {
+        push(new THREE.Vector3(SURF, atY(b), at(a))); // грань +X
+        push(new THREE.Vector3(at(a), atY(b), SURF)); // грань +Z
+      }
+      for (let b = 0; b <= N; b++) push(new THREE.Vector3(at(a), SURF_Y, at(b))); // грань +Y
+    }
   }
 
   const starTex = makeStarTexture();
@@ -1009,10 +1442,10 @@ export async function createScene(
     delayInit: 1.8,
     delayMin: 0.2,
     delayRange: 1.6,
-    scaleMin: 0.85,
-    scaleRange: 1.0,
-    heroChance: 0.26,
-    heroBonus: 1.45,
+    scaleMin: 0.34,
+    scaleRange: 0.4,
+    heroChance: 0.22,
+    heroBonus: 0.7,
     peakMin: 0.95,
     peakRange: 0.05,
     minScale: 0.12,
@@ -1031,8 +1464,8 @@ export async function createScene(
     peakRange: 0.4,
     minScale: 0.02,
   };
-  const heroCount = Math.min(18, Math.max(10, Math.floor(vertsWorld.length * 0.24)));
-  const pinCount = Math.min(72, Math.max(34, Math.floor(vertsWorld.length * 1.0)));
+  const heroCount = Math.min(14, Math.max(8, Math.floor(vertsWorld.length * 0.17)));
+  const pinCount = Math.min(34, Math.max(16, Math.floor(vertsWorld.length * 0.45)));
   addPool(heroCount, starTex, new THREE.Color(STAR_COLOR).multiplyScalar(STAR_HDR), heroCfg);
   addPool(pinCount, pinTex, new THREE.Color(PIN_COLOR).multiplyScalar(PIN_HDR), pinCfg);
 
@@ -1043,6 +1476,7 @@ export async function createScene(
   let haloTex: THREE.Texture | null = null;
   const haloSprites: THREE.Sprite[] = [];
   let fakeGlow = false;
+  let transmissionOn = opts.transmission ?? true;
   const ensureHalos = () => {
     if (haloTex) return;
     haloTex = makeHaloTexture();
@@ -1284,12 +1718,26 @@ export async function createScene(
         haloGroup.visible = fakeGlow;
         // Без bloom HDR-эмиттеры просто клипаются в белый — возвращаем им LDR-цвет,
         // иначе рёбра и блики выглядят как плоские белые пятна.
-        edgeMat.color.set(EDGE_COLOR).multiplyScalar(q.bloom ? EDGE_HDR : 1.0);
+        rimMat.color.set(RIM_COLOR).multiplyScalar(q.bloom ? RIM_HDR : 1.0);
+        // seamLineMat/formMat уже в LDR — демоутить нечего.
+        // Светящиеся швы: без bloom эмиссия >1 просто выжигается ACES в белую
+        // сетку — опускаем её в LDR, свет изнутри остаётся, ореола нет.
+        for (const sm of seamMats) sm.emissiveIntensity = q.bloom ? SEAM_HDR : 1.0;
         for (let i = 0; i < glints.length; i++) {
           const isHero = i < heroCount;
           const c = isHero ? STAR_COLOR : PIN_COLOR;
           const k = q.bloom ? (isHero ? STAR_HDR : PIN_HDR) : 1.0;
           (glints[i].sprite.material as THREE.SpriteMaterial).color.set(c).multiplyScalar(k);
+        }
+      }
+      if (q.transmission !== undefined && q.transmission !== transmissionOn) {
+        transmissionOn = q.transmission;
+        for (const m of glassMats) {
+          m.transmission = transmissionOn ? (m.userData.transmission as number) : 0;
+          // Без преломления грань теряет весь проходящий свет и проваливается
+          // в чёрное — компенсируем отражением окружения.
+          m.envMapIntensity = (m.userData.envMapIntensity as number) * (transmissionOn ? 1 : 1.45);
+          m.needsUpdate = true; // transmission 0↔>0 меняет дефайны шейдера
         }
       }
       if (q.pixelRatio !== undefined) {
@@ -1339,8 +1787,16 @@ export async function createScene(
       canvas.removeEventListener('webglcontextlost', onContextLost);
       composer.dispose();
       boxGeo.dispose();
-      edgeGeo.dispose();
-      edgeMat.dispose();
+      for (const og of outlineGeos) og.dispose();
+      boxEdgeGeo.dispose();
+      formMat.dispose();
+      seamLineMat.dispose();
+      rimMat.dispose();
+      seamGeo.dispose();
+      (silhouette.geometry as THREE.BufferGeometry).dispose();
+      seamTexSide.dispose();
+      seamTexTop.dispose();
+      for (const sm of seamMats) sm.dispose();
       grainTex.dispose();
       envRT.texture.dispose();
       pmrem.dispose();
@@ -1371,8 +1827,9 @@ export async function createScene(
     for (let i = 0; i < pieceObjs.length; i++) {
       const po = pieceObjs[i];
       const mi = pieceMover[i];
+      // Сдвиг лупа — ВДОЛЬ НОРМАЛИ ГРАНИ блока (панель выезжает из куба наружу).
       if (mi === null) tmp.set(0, 0, 0);
-      else moverOffset(movers[mi], tLoop, tmp);
+      else tmp.copy(po.normal).multiplyScalar(moverPhase(movers[mi], tLoop) * movers[mi].dist);
       // база лупа + аддитивный офсет интерактива (этап 2)
       po.group.position.copy(po.base).add(tmp).add(po.offset);
     }
@@ -1478,6 +1935,14 @@ export async function createScene(
       label: 'bloom levels → 4',
     },
     {
+      // Преломление стоит ЦЕЛОГО повторного рендера сцены в transmission-таргет
+      // (three, ещё и с MSAA×4 и мип-цепочкой). Снимаем его раньше блума: без
+      // блума сцена рассыпается визуально сильнее, чем без «стеклянности».
+      applies: () => transmissionOn,
+      apply: () => handle.setQuality({ transmission: false }),
+      label: 'transmission выключен (непрозрачное тёмное стекло)',
+    },
+    {
       // Самая дорогая часть кадра — мип-цепочка блума. Убираем её целиком, но
       // сцену не оставляем плоской: включается запечённый ореол на спрайтах.
       applies: () => !fakeGlow,
@@ -1564,7 +2029,9 @@ export async function createScene(
       camera,
       composer,
       bloom,
-      edgeMat,
+      edgeMat: rimMat,
+      seamMat,
+      seamLayer,
       glintGroup,
       hazeMat,
       feedFrameTimes(frameMs: number, frames: number) {

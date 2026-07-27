@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { damp3, dampE } from 'maath/easing';
-import { GRID_STEP, type InteractDebug, type SceneHandle } from './cubeScene';
+import { GRID_STEP, type CubePiece, type InteractDebug, type SceneHandle } from './cubeScene';
 
 /**
  * Интерактив hero-кластера (этап 2): «комбо без подсветки».
@@ -286,16 +286,25 @@ export function attachInteractions(
     return true;
   };
 
-  /** Смещение amp вдоль ДОМИНАНТНОЙ оси вектора v (сохраняет кубическую пластику). */
-  const dominant = (v: THREE.Vector3, amp: number, out: THREE.Vector3) => {
-    const ax = Math.abs(v.x);
-    const ay = Math.abs(v.y);
-    const az = Math.abs(v.z);
-    if (ax < 1e-4 && ay < 1e-4 && az < 1e-4)
-      out.set(0, amp, 0); // ровно под курсором → вверх
-    else if (ax >= ay && ax >= az) out.set(v.x < 0 ? -amp : amp, 0, 0);
-    else if (ay >= az) out.set(0, v.y < 0 ? -amp : amp, 0);
-    else out.set(0, 0, v.z < 0 ? -amp : amp);
+  /**
+   * Смещение amp вдоль НОРМАЛИ ГРАНИ блока.
+   *
+   * До этапа 4 блоки были свободными кубиками кластера и отъезжали вдоль
+   * доминантной мировой оси вектора «от курсора». Теперь блок — ячейка грани
+   * большого куба, и единственное движение, которое не ломает силуэт, — вдоль
+   * нормали этой грани (ровно как панели в референсе). Поэтому вектор v лишь
+   * ЗАДАЁТ ЗНАК: панель уезжает от курсора наружу или утапливается внутрь.
+   * Если v почти в плоскости грани (курсор прямо напротив), знак берём наружу.
+   */
+  const alongNormal = (
+    piece: CubePiece,
+    v: THREE.Vector3,
+    amp: number,
+    out: THREE.Vector3,
+    outwardOnly = false,
+  ) => {
+    const s = outwardOnly ? 1 : v.dot(piece.normal) < -1e-3 ? -1 : 1;
+    out.copy(piece.normal).multiplyScalar(amp * s);
   };
 
   const clearOffsets = () => {
@@ -404,7 +413,7 @@ export function attachInteractions(
         away.copy(p.base).sub(follow2);
         const dist = away.length();
         if (dist < REPEL_RADIUS) {
-          dominant(away, REPEL_AMP * smoothstep01(1 - dist / REPEL_RADIUS), target);
+          alongNormal(p, away, REPEL_AMP * smoothstep01(1 - dist / REPEL_RADIUS), target);
         }
       }
       damp3(repel[i], target, REPEL_SMOOTH, dt);
@@ -419,7 +428,9 @@ export function attachInteractions(
           const rel = away.length() - WAVE_SPEED * (clock - w.t0);
           const g = Math.exp(-(rel * rel) / (WAVE_WIDTH * WAVE_WIDTH));
           if (g < WAVE_EPS) continue;
-          dominant(away, WAVE_AMP * g, tmp);
+          // Волна ВСЕГДА выталкивает панель наружу: фронт пробегает по граням
+          // большого куба, поднимая их, а не вминая половину внутрь.
+          alongNormal(p, away, WAVE_AMP * g, tmp, true);
           waveAcc.add(tmp);
           wsum += g;
         }
