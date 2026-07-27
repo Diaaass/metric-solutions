@@ -234,6 +234,10 @@ const SURF_Y = ((NY - 1) / 2) * STEP + CUBE / 2;
  * пропадает. 0.015 хватает, чтобы не было z-файтинга с гранями ячеек.
  */
 const SEAM_SINK = 0.015;
+/** Глубина второго слоя внутренних рёбер — полклетки внутрь. */
+const DEPTH_SINK = 0.5;
+/** Эмиссия глубинного слоя: заметно тусклее ближнего и НИЖЕ порога bloom. */
+const DEPTH_HDR = 2.0;
 const LOOP = 15; // период бесшовного цикла сдвигов, сек
 
 // --- HDR-эмиттеры: множители цвета ВЫШЕ 1.0 → проходят порог bloom (1.0) ---
@@ -241,7 +245,9 @@ const LOOP = 15; // период бесшовного цикла сдвигов,
 // Рёбра ВЫДВИНУТЫХ панелей — тот самый тонкий белый контур по периметру панели
 // из референса. Отдельный материал: у панелей он ярче и полностью непрозрачный.
 const RIM_COLOR = 0xdce9ff;
-const RIM_HDR = 3.0;
+const RIM_HDR = 1.8;
+/** Доля яркости ребра у самого низа силуэта (верх = 1.0). */
+const RIM_FLOOR = 0.12;
 // Светящийся внутренний слой (свет ИЗНУТРИ куба, вытекающий в швы). Эмиссия
 // модулируется картой-сеткой: линии по границам ячеек ярче 1.0 → берут порог bloom.
 const SEAM_COLOR = 0x2f86ff;
@@ -502,6 +508,107 @@ function makeGrainTexture(): THREE.Texture {
 // Сетка нарисована по границам ячеек (u,v = 0, 1/N … 1): широкий мягкий ореол
 // (ниже порога bloom, красит стекло вокруг) + тонкое ядро (ярче 1.0 → блумит).
 // ---------------------------------------------------------------------------
+/**
+ * Пишет в геометрию линии атрибут цвета: яркость падает сверху вниз, плюс
+ * небольшой разброс на ребро. Именно это убирает «ровную неоновую обводку» —
+ * в референсе внешние рёбра ярче у освещённого верха и почти гаснут внизу.
+ * @param toWorldY локальная Y вершины → мировая (у блоков задан scale группы)
+ */
+function tintByHeight(
+  geo: THREE.BufferGeometry,
+  toWorldY: (localY: number) => number,
+  jitter: number,
+): void {
+  const pos = geo.getAttribute('position');
+  const col = new Float32Array(pos.count * 3);
+  const span = SURF_Y * 2;
+  for (let i = 0; i < pos.count; i++) {
+    const t = (toWorldY(pos.getY(i)) + SURF_Y) / span; // 0 — низ, 1 — верх
+    const x = t < 0 ? 0 : t > 1 ? 1 : t;
+    const k = (RIM_FLOOR + (1 - RIM_FLOOR) * (x * x * (3 - 2 * x))) * jitter;
+    col[i * 3] = col[i * 3 + 1] = col[i * 3 + 2] = k;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+}
+
+/**
+ * Альфа-маска ближнего светового слоя: непрозрачны только полосы вдоль швов и
+ * пятна узлов. Со сплошным ящиком сквозь стекло была видна ровно одна
+ * плоскость на глубине 0.015 — «слоистой структуры» референса не получалось.
+ * С маской (alphaTest) между швами открывается ГЛУБИННЫЙ слой, и плоская
+ * грань читается объёмной.
+ */
+function makeSeamMask(cu: number, cv: number, halfU: number, halfV: number): THREE.Texture {
+  const S = 512;
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = S;
+  const ctx = cnv.getContext('2d')!;
+  const atU = (n: number) => (0.5 + ((n - cu / 2) * STEP) / (2 * halfU)) * S;
+  const atV = (n: number) => (0.5 + ((n - cv / 2) * STEP) / (2 * halfV)) * S;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, S, S);
+  ctx.fillStyle = '#fff';
+  // полоса шире самого шва: иначе под углом сквозь щель видно фон, а не свет
+  const w = Math.max(3, ((GAP * 1.9) / (2 * halfU)) * S);
+  for (let n = 0; n <= cu; n++) ctx.fillRect(atU(n) - w / 2, 0, w, S);
+  for (let n = 0; n <= cv; n++) ctx.fillRect(0, atV(n) - w / 2, S, w);
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.colorSpace = THREE.NoColorSpace;
+  return tex;
+}
+
+/**
+ * Глубинный слой: редкая тусклая сетка рёбер на полклетки внутрь. Сквозь
+ * стекло она размывается по roughness и даёт вторую плоскость — та самая
+ * «слоистая внутренняя структура» референса.
+ */
+function makeDepthTexture(cu: number, cv: number, halfU: number, halfV: number): THREE.Texture {
+  const S = 512;
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = S;
+  const ctx = cnv.getContext('2d')!;
+  const rng = mulberry32(0x2c71f);
+  const atU = (n: number) => (0.5 + ((n - cu / 2) * STEP) / (2 * halfU)) * S;
+  const atV = (n: number) => (0.5 + ((n - cv / 2) * STEP) / (2 * halfV)) * S;
+  ctx.fillStyle = '#050a18';
+  ctx.fillRect(0, 0, S, S);
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 20; i++) {
+    const x = rng() * S;
+    const y = rng() * S;
+    const r = S * (0.06 + rng() * 0.16);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(70,130,255,${0.06 + rng() * 0.08})`);
+    g.addColorStop(1, 'rgba(50,110,240,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  ctx.lineWidth = 2.4;
+  // сетка РЕДКАЯ и смещена на полклетки — она не должна повторять швы,
+  // иначе вместо глубины получится вторая такая же сетка
+  for (let n = 0; n <= cu; n++) {
+    if (rng() < 0.45) continue;
+    const x = (atU(n) + atU(n + 1)) / 2;
+    ctx.strokeStyle = `rgba(80,140,255,${0.1 + rng() * 0.1})`;
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, S);
+    ctx.stroke();
+  }
+  for (let n = 0; n <= cv; n++) {
+    if (rng() < 0.45) continue;
+    const y = (atV(n) + atV(n + 1)) / 2;
+    ctx.strokeStyle = `rgba(80,140,255,${0.1 + rng() * 0.1})`;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(S, y);
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 function makeSeamTexture(cu: number, cv: number, halfU: number, halfV: number): THREE.Texture {
   const S = 512;
   const cnv = document.createElement('canvas');
@@ -730,23 +837,23 @@ interface ShellCell extends CubeCell {
 
 // Грань +Z (передне-левая): строки j = NY-1…0 сверху вниз, столбцы i = 0…3.
 const OUT_PZ = [
-  [0.0, 0.55, 0.0, 0.0],
-  [0.72, 0.72, 0.0, 0.3],
-  [0.0, 0.0, 0.42, 0.0],
-  [0.0, 0.0, 0.18, -0.2],
+  [0.0, 0.5, 0.5, 0.0],
+  [0.0, 0.0, 0.0, 0.22],
+  [0.58, 0.58, 0.0, 0.0],
+  [0.0, 0.0, 0.0, -0.18],
   [0.0, 0.0, 0.0, 0.0],
 ];
-const FROST_PZ = ['.F..', 'FF..', '..F.', '....', '....'];
+const FROST_PZ = ['.FF.', '....', 'FF..', '....', '....'];
 
 // Грань +X (передне-правая): строки j = NY-1…0, столбцы k = 3…0 (ближняя слева).
 const OUT_PX = [
-  [0.0, 0.0, 0.0, 0.0],
-  [0.0, 0.62, 0.0, 0.0],
-  [0.78, 0.78, 0.0, 0.28],
-  [0.0, 0.28, 0.0, -0.14],
+  [0.0, 0.3, 0.0, 0.0],
+  [0.52, 0.52, 0.0, 0.0],
+  [0.52, 0.52, 0.0, 0.0],
+  [0.0, 0.0, 0.0, -0.16],
   [0.0, 0.0, 0.0, 0.0],
 ];
-const FROST_PX = ['....', '.F..', 'FF..', '....', '....'];
+const FROST_PX = ['....', 'FF..', 'FF..', '....', '....'];
 
 // Грань +Y (верхняя): строки k = 0…3 (дальняя сверху), столбцы i = 0…3.
 const OUT_PY = [
@@ -849,70 +956,70 @@ function buildPieces(cells: ShellCell[]): PieceDesc[] {
     );
   const outFaceOf = (n: THREE.Vector3) => (n.y > 0 ? FACE_PY : n.x > 0 ? FACE_PX : FACE_PZ);
 
-  // Крупные светлые щиты референса — ЦЕЛЬНЫЕ пластины, а не два состыкованных
-  // квадрата: между ними нет ни шва, ни второй обводки. Поэтому соседние
-  // матовые ячейки с одинаковым вылетом на одной грани сливаем в один блок 2×1.
-  const key = (c: ShellCell) => `${c.i},${c.j},${c.k}`;
-  const byKey = new Map(cells.map((c) => [key(c), c]));
-  const used = new Set<string>();
-  const pieces: PieceDesc[] = [];
+  // Крупные матовые щиты референса — ЦЕЛЬНЫЕ пластины (2×1, 2×2), а не мозаика
+  // из состыкованных квадратов: внутри щита нет ни шва, ни второй обводки.
+  // Поэтому по каждой грани идёт жадная сборка прямоугольников из соседних
+  // матовых ячеек с одинаковым вылетом. Тёмные выступы остаются 1×1.
+  //
+  // Координаты грани (u, v): PZ → (i, j), PX → (k, j), PY → (i, k).
+  const uvOf = (c: ShellCell): [number, number] =>
+    c.n === N_PZ ? [c.i, c.j] : c.n === N_PX ? [c.k, c.j] : [c.i, c.k];
 
-  for (const c of cells) {
-    if (used.has(key(c))) continue;
-    let mate: ShellCell | undefined;
-    let axis: 'i' | 'k' | null = null;
-    if (c.frost !== null) {
-      // ищем соседа вдоль горизонтали ТОЙ ЖЕ грани
-      // обе стороны: порядок обхода сетки иначе «съедает» пару (сосед уже занят)
-      const ax: 'i' | 'k' = c.n === N_PX ? 'k' : 'i';
-      const dirs: ['i' | 'k', number][] = [
-        [ax, 1],
-        [ax, -1],
-      ];
-      for (const [ax, d] of dirs) {
-        const nb = byKey.get(ax === 'i' ? `${c.i + d},${c.j},${c.k}` : `${c.i},${c.j},${c.k + d}`);
-        if (
-          nb &&
-          !used.has(key(nb)) &&
-          nb.frost === c.frost &&
-          nb.n === c.n &&
-          Math.abs(nb.out - c.out) < 1e-6
-        ) {
-          mate = nb;
-          axis = ax;
-          break;
+  const pieces: PieceDesc[] = [];
+  for (const face of [N_PY, N_PX, N_PZ]) {
+    const own = cells.filter((c) => c.n === face);
+    const at = new Map(own.map((c) => [uvOf(c).join(','), c]));
+    const used = new Set<string>();
+    const fits = (u: number, v: number, ref: ShellCell) => {
+      const c = at.get(`${u},${v}`);
+      return (
+        !!c && !used.has(`${u},${v}`) && c.frost === ref.frost && Math.abs(c.out - ref.out) < 1e-6
+      );
+    };
+    // порядок обхода фиксирован сортировкой — сборка детерминирована
+    const sorted = [...own].sort((a, b) => {
+      const [au, av] = uvOf(a);
+      const [bu, bv] = uvOf(b);
+      return av - bv || au - bu;
+    });
+    for (const c of sorted) {
+      const [u0, v0] = uvOf(c);
+      if (used.has(`${u0},${v0}`)) continue;
+      let su = 1;
+      let sv = 1;
+      if (c.frost !== null) {
+        while (fits(u0 + su, v0, c)) su++;
+        outer: for (;;) {
+          for (let du = 0; du < su; du++) if (!fits(u0 + du, v0 + sv, c)) break outer;
+          sv++;
         }
       }
-    }
-    if (mate && axis) {
-      used.add(key(c));
-      used.add(key(mate));
-      const base = centre(c).add(centre(mate)).multiplyScalar(0.5);
+      const acc = new THREE.Vector3();
+      for (let du = 0; du < su; du++)
+        for (let dv = 0; dv < sv; dv++) {
+          used.add(`${u0 + du},${v0 + dv}`);
+          acc.add(centre(at.get(`${u0 + du},${v0 + dv}`)!));
+        }
+      acc.multiplyScalar(1 / (su * sv));
+      // длина пролёта из n ячеек: n*CUBE + (n-1)*GAP = n*STEP − GAP
+      const spanU = su * STEP - GAP;
+      const spanV = sv * STEP - GAP;
+      const size =
+        face === N_PZ
+          ? new THREE.Vector3(spanU, spanV, CUBE)
+          : face === N_PX
+            ? new THREE.Vector3(CUBE, spanV, spanU)
+            : new THREE.Vector3(spanU, CUBE, spanV);
       pieces.push({
-        base,
-        size: new THREE.Vector3(
-          axis === 'i' ? STEP + CUBE : CUBE,
-          CUBE,
-          axis === 'k' ? STEP + CUBE : CUBE,
-        ),
+        base: acc,
+        size,
         normal: c.n,
         frost: c.frost,
         rim: c.rim,
         outFace: outFaceOf(c.n),
         out: c.out,
       });
-      continue;
     }
-    used.add(key(c));
-    pieces.push({
-      base: centre(c),
-      size: new THREE.Vector3(CUBE, CUBE, CUBE),
-      normal: c.n,
-      frost: c.frost,
-      rim: c.rim,
-      outFace: outFaceOf(c.n),
-      out: c.out,
-    });
   }
   return pieces;
 }
@@ -1162,6 +1269,8 @@ export async function createScene(
   };
   const outlineGeos = [0, 1, 2, 3, 4, 5].map(faceOutlineGeo);
   const boxEdgeGeo = new THREE.EdgesGeometry(boxGeo);
+  /** Копии рамок с запечённым градиентом яркости — их тоже надо освободить. */
+  const tinted: THREE.BufferGeometry[] = [];
   const grainTex = makeGrainTexture();
   // HDR-эмиттер №1: контур выдвинутых панелей и внешний силуэт большого куба —
   // та самая тонкая белая обводка референса. Цвет ×RIM_HDR > 1.0 → проходит
@@ -1171,7 +1280,7 @@ export async function createScene(
   const seamLineMat = new THREE.LineBasicMaterial({
     color: new THREE.Color(RIM_COLOR),
     transparent: true,
-    opacity: 0.18,
+    opacity: 0.26,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
     toneMapped: false,
@@ -1185,7 +1294,11 @@ export async function createScene(
     depthWrite: false,
     toneMapped: false,
   });
+  // vertexColors: яркость ребра берётся из атрибута цвета (см. tintByHeight) —
+  // верх светится, низ почти гаснет. Ровная белая обводка по всему силуэту
+  // читалась «неоновым wireframe», в референсе рёбра переменной яркости.
   const rimMat = new THREE.LineBasicMaterial({
+    vertexColors: true,
     color: new THREE.Color(RIM_COLOR).multiplyScalar(RIM_HDR),
     transparent: true,
     opacity: 1,
@@ -1252,7 +1365,7 @@ export async function createScene(
       roughness: 0.46 + rng() * 0.26,
       roughnessMap: grainTex,
       bumpMap: grainTex,
-      bumpScale: 0.16,
+      bumpScale: 0.26,
       transmission: 0.26,
       thickness: 0.5,
       ior: 1.45,
@@ -1296,7 +1409,12 @@ export async function createScene(
       // ячейки превращала куб в проволочную сетку — в референсе её нет.
       if (p.rim) {
         g.add(new THREE.LineSegments(boxEdgeGeo, formMat));
-        g.add(new THREE.LineSegments(outlineGeos[p.frost ?? p.outFace], rimMat));
+        // своя копия рамки: яркость запекается в вершины по МИРОВОЙ высоте,
+        // одна общая геометрия дала бы всем блокам одинаковый градиент
+        const og = outlineGeos[p.frost ?? p.outFace].clone();
+        tintByHeight(og, (ly) => p.base.y + ly * p.size.y, 0.8 + rng() * 0.2);
+        tinted.push(og);
+        g.add(new THREE.LineSegments(og, rimMat));
       } else {
         g.add(new THREE.LineSegments(outlineGeos[p.outFace], seamLineMat));
       }
@@ -1325,7 +1443,11 @@ export async function createScene(
   const halfV = SURF_Y - SEAM_SINK;
   const seamTexSide = makeSeamTexture(N, NY, halfH, halfV);
   const seamTexTop = makeSeamTexture(N, N, halfH, halfH);
-  const makeSeamMat = (map: THREE.Texture) =>
+  const seamMaskSide = makeSeamMask(N, NY, halfH, halfV);
+  const seamMaskTop = makeSeamMask(N, N, halfH, halfH);
+  // alphaTest, а не transparent: материал остаётся в непрозрачном проходе, а
+  // значит попадает в transmission-таргет — иначе сквозь стекло его не видно.
+  const makeSeamMat = (map: THREE.Texture, mask: THREE.Texture) =>
     new THREE.MeshStandardMaterial({
       color: 0x000000,
       roughness: 1,
@@ -1333,9 +1455,11 @@ export async function createScene(
       emissive: new THREE.Color(SEAM_COLOR),
       emissiveMap: map,
       emissiveIntensity: SEAM_HDR,
+      alphaMap: mask,
+      alphaTest: 0.5,
     });
-  const seamMat = makeSeamMat(seamTexSide);
-  const seamMatTop = makeSeamMat(seamTexTop);
+  const seamMat = makeSeamMat(seamTexSide, seamMaskSide);
+  const seamMatTop = makeSeamMat(seamTexTop, seamMaskTop);
   const seamMats = [seamMat, seamMatTop];
   const seamGeo = new THREE.BoxGeometry(1, 1, 1);
   const seamLayer = new THREE.Mesh(seamGeo, [
@@ -1349,12 +1473,44 @@ export async function createScene(
   seamLayer.scale.set(halfH * 2, halfV * 2, halfH * 2);
   container.add(seamLayer);
 
+  // Второй слой рёбер — глубже и тусклее. Сквозь плоскую грань он виден в
+  // просветах решётки ближнего слоя и размыт по roughness стекла: грань
+  // перестаёт читаться одной плоскостью.
+  const depthH = SURF - DEPTH_SINK;
+  const depthV = SURF_Y - DEPTH_SINK;
+  const depthTexSide = makeDepthTexture(N, NY, depthH, depthV);
+  const depthTexTop = makeDepthTexture(N, N, depthH, depthH);
+  const makeDepthMat = (map: THREE.Texture) =>
+    new THREE.MeshStandardMaterial({
+      color: 0x000000,
+      roughness: 1,
+      metalness: 0,
+      emissive: new THREE.Color(SEAM_COLOR),
+      emissiveMap: map,
+      emissiveIntensity: DEPTH_HDR,
+    });
+  const depthMat = makeDepthMat(depthTexSide);
+  const depthMatTop = makeDepthMat(depthTexTop);
+  const depthMats = [depthMat, depthMatTop];
+  const depthLayer = new THREE.Mesh(seamGeo, [
+    depthMat,
+    depthMat,
+    depthMatTop,
+    depthMatTop,
+    depthMat,
+    depthMat,
+  ]);
+  depthLayer.scale.set(depthH * 2, depthV * 2, depthH * 2);
+  container.add(depthLayer);
+
   // Внешний силуэт большого куба — тонкая яркая линия по 12 рёбрам. В референсе
   // силуэт очерчен чётко и ярко, тогда как швы внутри граней еле намечены; из
   // одних только рёбер ячеек такого разделения не получить. Чуть больше куба,
   // чтобы не z-файтить с гранями крайних ячеек; задние рёбра закрывает
   // непрозрачный внутренний слой.
-  const silhouette = new THREE.LineSegments(new THREE.EdgesGeometry(seamGeo), rimMat);
+  const silhouetteGeo = new THREE.EdgesGeometry(seamGeo);
+  tintByHeight(silhouetteGeo, (ly) => ly * SURF_Y * 2 * 1.002, 1);
+  const silhouette = new THREE.LineSegments(silhouetteGeo, rimMat);
   silhouette.scale.set(SURF * 2 * 1.002, SURF_Y * 2 * 1.002, SURF * 2 * 1.002);
   container.add(silhouette);
 
@@ -1442,10 +1598,10 @@ export async function createScene(
     delayInit: 1.8,
     delayMin: 0.2,
     delayRange: 1.6,
-    scaleMin: 0.34,
-    scaleRange: 0.4,
+    scaleMin: 0.28,
+    scaleRange: 0.32,
     heroChance: 0.22,
-    heroBonus: 0.7,
+    heroBonus: 0.5,
     peakMin: 0.95,
     peakRange: 0.05,
     minScale: 0.12,
@@ -1464,8 +1620,8 @@ export async function createScene(
     peakRange: 0.4,
     minScale: 0.02,
   };
-  const heroCount = Math.min(14, Math.max(8, Math.floor(vertsWorld.length * 0.17)));
-  const pinCount = Math.min(34, Math.max(16, Math.floor(vertsWorld.length * 0.45)));
+  const heroCount = Math.min(9, Math.max(5, Math.floor(vertsWorld.length * 0.11)));
+  const pinCount = Math.min(26, Math.max(12, Math.floor(vertsWorld.length * 0.34)));
   addPool(heroCount, starTex, new THREE.Color(STAR_COLOR).multiplyScalar(STAR_HDR), heroCfg);
   addPool(pinCount, pinTex, new THREE.Color(PIN_COLOR).multiplyScalar(PIN_HDR), pinCfg);
 
@@ -1723,6 +1879,7 @@ export async function createScene(
         // Светящиеся швы: без bloom эмиссия >1 просто выжигается ACES в белую
         // сетку — опускаем её в LDR, свет изнутри остаётся, ореола нет.
         for (const sm of seamMats) sm.emissiveIntensity = q.bloom ? SEAM_HDR : 1.0;
+        for (const dm of depthMats) dm.emissiveIntensity = DEPTH_HDR; // уже LDR
         for (let i = 0; i < glints.length; i++) {
           const isHero = i < heroCount;
           const c = isHero ? STAR_COLOR : PIN_COLOR;
@@ -1788,6 +1945,7 @@ export async function createScene(
       composer.dispose();
       boxGeo.dispose();
       for (const og of outlineGeos) og.dispose();
+      for (const tg of tinted) tg.dispose();
       boxEdgeGeo.dispose();
       formMat.dispose();
       seamLineMat.dispose();
@@ -1796,7 +1954,12 @@ export async function createScene(
       (silhouette.geometry as THREE.BufferGeometry).dispose();
       seamTexSide.dispose();
       seamTexTop.dispose();
+      seamMaskSide.dispose();
+      seamMaskTop.dispose();
+      depthTexSide.dispose();
+      depthTexTop.dispose();
       for (const sm of seamMats) sm.dispose();
+      for (const dm of depthMats) dm.dispose();
       grainTex.dispose();
       envRT.texture.dispose();
       pmrem.dispose();
