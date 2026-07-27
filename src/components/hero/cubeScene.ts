@@ -3,6 +3,7 @@ import {
   BloomEffect,
   EffectComposer,
   EffectPass,
+  FXAAEffect,
   RenderPass,
   ToneMappingEffect,
   ToneMappingMode,
@@ -77,6 +78,17 @@ export interface QualityOptions {
   bloomIntensity?: number;
   /** DPR рендера. */
   pixelRatio?: number;
+  /**
+   * Постфильтр сглаживания (FXAA). По умолчанию ВЫКЛЮЧЕН: основное сглаживание —
+   * пол DPR 1.5 (суперсэмплинг). Включается лесенкой на ступени «DPR → 1».
+   */
+  aa?: boolean;
+  /**
+   * Bloom целиком. false — проход блума отключается, а вместо него включается
+   * «дешёвый» фейковый ореол на спрайтах-бликах (см. fakeGlow), чтобы сцена не
+   * стала плоской. Нижняя ступень лесенки деградации.
+   */
+  bloom?: boolean;
 }
 
 export interface SceneHandle {
@@ -133,6 +145,14 @@ export interface SceneDebug {
   glintGroup: THREE.Group;
   /** Материал широкой синей «атмосферы». */
   hazeMat: THREE.SpriteMaterial;
+  /**
+   * Прогон лесенки деградации на синтетическом времени кадра: подсовывает
+   * `frames` замеров по `frameMs` мс с виртуально идущими часами, чтобы
+   * кулдаун между шагами отрабатывал без реального ожидания.
+   */
+  feedFrameTimes: (frameMs: number, frames: number) => void;
+  /** Текущее состояние лесенки (номер шага, остановлена ли). */
+  ladderState: () => { step: number; done: boolean; pixelRatio: number; fakeGlow: boolean };
   /** Тест-хуки интерактива — ставит контроллер cubeInteractions (этап 2). */
   interact?: InteractDebug;
 }
@@ -142,6 +162,16 @@ export interface SceneOptions extends QualityOptions {
   onReady?: () => void;
   /** preserveDrawingBuffer для toDataURL (постер/скриншот) + debug-ссылки. */
   capture?: boolean;
+  /**
+   * Контекст WebGL потерян (iOS-регрессии по памяти, сон GPU, смена видеокарты).
+   * Восстановление НЕ запрашиваем: возвращаем постер — это и надёжнее, и дешевле.
+   */
+  onContextLost?: () => void;
+  /**
+   * Лесенка деградации исчерпана: даже на минимальном качестве кадр не укладывается
+   * в бюджет. Сцену дальше не крутим — зовущий возвращает постер.
+   */
+  onExhausted?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -184,7 +214,10 @@ const PIN_HDR = 3.0; // мелкие искры
 const BLOOM_INTENSITY = 0.75;
 const BLOOM_LEVELS = 8; // desktop; этап 3 опустит до 4–5 на мобилке
 const BLOOM_RADIUS = 0.85;
-const HAZE_OPACITY = 0.45; // широкая синяя «атмосфера» (было 0.55, пока ореолы были запечёнными)
+// Широкая синяя «атмосфера» рисуется поверх кластера (depthTest:false, аддитивно),
+// поэтому напрямую поднимает дно тёмных боковых граней и съедает контраст. Держим
+// её ровно настолько, чтобы читалась синяя среда референса (0.55 → 0.45 → 0.30).
+const HAZE_OPACITY = 0.3;
 const EXPOSURE = 1.12; // читается ToneMappingEffect'ом через uniform toneMappingExposure
 
 // ---------------------------------------------------------------------------
@@ -271,6 +304,31 @@ function makePinTexture(): THREE.Texture {
   ctx.fillStyle = core;
   ctx.fillRect(0, 0, S, S);
 
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  return tex;
+}
+
+// Мягкий круглый ореол — ФОЛБЭК на самой нижней ступени лесенки деградации,
+// когда проход bloom отключён совсем. Досветка «запечённым» halo-спрайтом за
+// каждым крупным бликом (подход до этапа 1): сцена не становится плоской, а
+// стоит это один дополнительный спрайт на блик и НОЛЬ полноэкранных проходов.
+// Создаётся лениво — на здоровых устройствах не тратим ни памяти, ни времени.
+function makeHaloTexture(): THREE.Texture {
+  const S = 128;
+  const cnv = document.createElement('canvas');
+  cnv.width = cnv.height = S;
+  const ctx = cnv.getContext('2d')!;
+  const c = S / 2;
+  const g = ctx.createRadialGradient(c, c, 0, c, c, c);
+  g.addColorStop(0, 'rgba(226,242,255,0.6)');
+  g.addColorStop(0.16, 'rgba(140,200,255,0.2)');
+  g.addColorStop(0.45, 'rgba(70,150,255,0.06)');
+  g.addColorStop(1, 'rgba(30,90,220,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, S, S);
   const tex = new THREE.CanvasTexture(cnv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.minFilter = THREE.LinearFilter;
@@ -415,9 +473,12 @@ function makeEnvEquirect(): THREE.Texture {
   grad.addColorStop(0.0, '#ffffff');
   grad.addColorStop(0.34, '#f4f7fd'); // держим яркое небо до зоны отражения топов
   grad.addColorStop(0.42, '#9fabbd');
-  grad.addColorStop(0.5, '#4a5568');
-  grad.addColorStop(0.6, '#161d29');
-  grad.addColorStop(0.72, '#080c14');
+  // Ниже 0.5 — зона, которую отражают БОКОВЫЕ грани. Спад делаем резче и глубже:
+  // референс (raw1/видео) — почти чёрное глянцевое стекло по бокам, светлое только
+  // сверху. Пологий спад давал «серые» бока и съедал контраст между верхом и боком.
+  grad.addColorStop(0.5, '#333c4b');
+  grad.addColorStop(0.6, '#0d121b');
+  grad.addColorStop(0.72, '#05080e');
   grad.addColorStop(1.0, '#010208');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
@@ -432,14 +493,14 @@ function makeEnvEquirect(): THREE.Texture {
 
   // Синие рефлексы — в НИЖНЕЙ зоне (v≈0.62), чтобы красить только тёмные бока, не топы.
   const blueA = ctx.createRadialGradient(W * 0.15, H * 0.62, 0, W * 0.15, H * 0.62, H * 0.4);
-  blueA.addColorStop(0, 'rgba(42,104,235,0.5)');
-  blueA.addColorStop(0.5, 'rgba(22,58,150,0.15)');
+  blueA.addColorStop(0, 'rgba(42,104,235,0.42)');
+  blueA.addColorStop(0.5, 'rgba(22,58,150,0.1)');
   blueA.addColorStop(1, 'rgba(10,30,90,0)');
   ctx.fillStyle = blueA;
   ctx.fillRect(0, 0, W, H);
 
   const blueB = ctx.createRadialGradient(W * 0.85, H * 0.66, 0, W * 0.85, H * 0.66, H * 0.34);
-  blueB.addColorStop(0, 'rgba(32,84,205,0.3)');
+  blueB.addColorStop(0, 'rgba(32,84,205,0.24)');
   blueB.addColorStop(1, 'rgba(10,30,90,0)');
   ctx.fillStyle = blueB;
   ctx.fillRect(0, 0, W, H);
@@ -738,7 +799,14 @@ export async function createScene(
     return null;
   }
   renderer.setClearColor(0x000000, 0); // прозрачный фон → просвечивает #001a3d страницы
-  renderer.setPixelRatio(opts.pixelRatio ?? Math.min(window.devicePixelRatio || 1, 2));
+  // Пол DPR 1.5 даже на не-retina мониторах: суперсэмплинг восстанавливает
+  // субпиксельную информацию, которой у морфологического SMAA просто нет
+  // (замер: PSNR по краям 21.2 дБ против 15.3 дБ на DPR 1). Канвас маленький,
+  // 2.25× пикселей — это 0.41 Мп, для любой GPU пренебрежимо; а если устройство
+  // всё-таки не тянет, лесенка деградации опустит DPR ниже пола (см. HeroCubes).
+  renderer.setPixelRatio(
+    opts.pixelRatio ?? Math.max(1.5, Math.min(window.devicePixelRatio || 1, 2)),
+  );
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   // Тонмаппинг УБРАН из материалов: буфер композера линейный HDR, ACES применяет
   // ToneMappingEffect уже ПОСЛЕ bloom. Экспозиция уезжает в шейдер эффекта
@@ -762,18 +830,18 @@ export async function createScene(
   // --- свет: сильный верхний key (светлый серебристо-синий верх),
   //     очень низкий ambient/hemi → боковые грани уходят почти в чёрный,
   //     синий контровой сзади + мягкий синий подсвет спереди-снизу («стекло») ---
-  const hemi = new THREE.HemisphereLight(0x565b64, 0x01040a, 0.13); // нейтральное небо → топы без синевы
+  const hemi = new THREE.HemisphereLight(0x565b64, 0x01040a, 0.1); // нейтральное небо → топы без синевы
   scene.add(hemi);
   const key = new THREE.DirectionalLight(0xf8faff, 2.3); // резкий блик на верхних рёбрах (спекуляр)
   key.position.set(1.5, 12.5, 3.0);
   scene.add(key);
-  const rimBack = new THREE.DirectionalLight(0x2b5cff, 0.68); // синий контровой сзади (акцент)
+  const rimBack = new THREE.DirectionalLight(0x2b5cff, 0.6); // синий контровой сзади (акцент)
   rimBack.position.set(-5, 2, -8);
   scene.add(rimBack);
-  const fillBlue = new THREE.DirectionalLight(0x1c46d8, 0.18); // едва заметный синий подсвет («стекло»)
+  const fillBlue = new THREE.DirectionalLight(0x1c46d8, 0.12); // едва заметный синий подсвет («стекло»)
   fillBlue.position.set(-6, -3, 5);
   scene.add(fillBlue);
-  scene.add(new THREE.AmbientLight(0x0a1424, 0.05)); // очень низкий → бока почти в чёрный
+  scene.add(new THREE.AmbientLight(0x0a1424, 0.035)); // очень низкий → бока почти в чёрный
 
   await chunk('renderer');
 
@@ -895,7 +963,18 @@ export async function createScene(
     const cfg = gl.cfg;
     gl.age = 0;
     gl.life = cfg.lifeMin + rng() * cfg.lifeRange;
-    gl.delay = initial ? rng() * cfg.delayInit : cfg.delayMin + rng() * cfg.delayRange;
+    if (initial) {
+      // Пул стартует «в полёте»: часть бликов уже горит на ПЕРВОМ кадре, остальные
+      // ждут своей очереди. Иначе первую пару секунд кластер стоит без искр — и
+      // постер (снимается в позе t=0) не совпал бы с первым живым кадром, из-за
+      // чего кроссфейд давал бы вспышку. Сид фиксирован, так что это состояние
+      // одинаково у постера и у любого пользователя.
+      const alive = rng() < 0.45;
+      gl.delay = alive ? 0 : rng() * cfg.delayInit;
+      gl.age = alive ? rng() * gl.life * 0.7 : 0;
+    } else {
+      gl.delay = cfg.delayMin + rng() * cfg.delayRange;
+    }
     gl.maxScale =
       cfg.scaleMin + rng() * cfg.scaleRange + (rng() < cfg.heroChance ? cfg.heroBonus : 0);
     gl.peak = cfg.peakMin + rng() * cfg.peakRange;
@@ -957,6 +1036,35 @@ export async function createScene(
   addPool(heroCount, starTex, new THREE.Color(STAR_COLOR).multiplyScalar(STAR_HDR), heroCfg);
   addPool(pinCount, pinTex, new THREE.Color(PIN_COLOR).multiplyScalar(PIN_HDR), pinCfg);
 
+  // --- фолбэк-ореолы (включаются только когда bloom выключен лесенкой) ---
+  const haloGroup = new THREE.Group();
+  haloGroup.visible = false;
+  container.add(haloGroup);
+  let haloTex: THREE.Texture | null = null;
+  const haloSprites: THREE.Sprite[] = [];
+  let fakeGlow = false;
+  const ensureHalos = () => {
+    if (haloTex) return;
+    haloTex = makeHaloTexture();
+    for (let i = 0; i < heroCount; i++) {
+      const mat = new THREE.SpriteMaterial({
+        map: haloTex,
+        // bloom выключен → цвет держим В ПРЕДЕЛАХ LDR, иначе ACES выжжет ореол в белый
+        color: new THREE.Color(STAR_COLOR),
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        opacity: 0,
+        toneMapped: false,
+      });
+      const s = new THREE.Sprite(mat);
+      s.scale.setScalar(0.001);
+      haloGroup.add(s);
+      haloSprites.push(s);
+    }
+  };
+
   // Широкая синяя «атмосфера» (ниже порога bloom → в свечение не попадает).
   const hazeMat = new THREE.SpriteMaterial({
     map: makeHazeTexture(),
@@ -992,7 +1100,39 @@ export async function createScene(
   });
   const toneMapping = new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC });
   composer.addPass(new RenderPass(scene, camera));
-  composer.addPass(new EffectPass(camera, bloom, toneMapping));
+  const mainPass = new EffectPass(camera, bloom, toneMapping);
+  composer.addPass(mainPass);
+
+  await chunk('composer');
+
+  // ---- 6b. Сглаживание ----------------------------------------------------
+  // MSAA у композера выключен (multisampling: 0), поэтому ступенчатые изо-грани
+  // нужно чем-то сглаживать. Замерили три варианта против эталона-суперсэмплинга ×4
+  // (PSNR по краевым пикселям, кадр без bloom — чтобы мерить именно сглаживание):
+  //   DPR 1, без AA ....... 15.10 дБ   ← регрессия этапа 1
+  //   DPR 1 + SMAA ........ 15.29 дБ   +56.5 KB gzip (одни только lookup-текстуры
+  //                                     SMAA — 65 KB base64), даёт всего +0.2 дБ
+  //   DPR 1.5, без AA ..... 21.19 дБ   0 KB
+  // Морфологический фильтр восстанавливает край из ОДНОЙ выборки на пиксель и
+  // субпиксельной информации взять ему просто неоткуда, а суперсэмплинг ею
+  // располагает. Поэтому основное сглаживание — пол DPR 1.5 (см. setPixelRatio),
+  // а SMAA не берём: он и слабее, и дороже четверти бюджета чанка.
+  //
+  // FXAA (никаких lookup-текстур, ~2 KB) держим ВЫКЛЮЧЕННЫМ и включаем только
+  // на ступени лесенки «DPR → 1»: там суперсэмплинга уже нет, и дешёвое сглаживание
+  // лучше голой лесенки. В обычном режиме он не нужен и слегка мылил бы картинку.
+  const fxaa = new FXAAEffect();
+  const fxaaPass = new EffectPass(camera, fxaa);
+  fxaaPass.enabled = false;
+  composer.addPass(fxaaPass);
+  // Композер держит renderToScreen на последнем проходе; раз последний проход
+  // выключен, вывод на экран возвращаем предыдущему.
+  const setAA = (on: boolean) => {
+    fxaaPass.enabled = on;
+    fxaaPass.renderToScreen = on;
+    mainPass.renderToScreen = !on;
+  };
+  setAA(opts.aa ?? false);
 
   // --- подгонка ортокамеры под кластер: «contain» по экранным экстентам ---
   // Проецируем углы всех блоков на оси камеры (right/up) и берём макс-экстенты,
@@ -1034,7 +1174,7 @@ export async function createScene(
   const fit = () => applyFrame(canvas.clientWidth || 1, canvas.clientHeight || 1);
   fit();
 
-  await chunk('composer');
+  await chunk('aa+fit');
 
   // ---- 7. прекомпил шейдеров (KHR_parallel_shader_compile, если есть) -----
   // Постер НЕ кроссфейдится, пока программы не собраны и первый кадр не выведен.
@@ -1121,6 +1261,9 @@ export async function createScene(
       paused = p;
       if (!p) {
         lastNow = performance.now();
+        // Копившиеся до паузы замеры больше не про текущий кадр, а первые кадры
+        // после возобновления идут по холодным кэшам — начинаем окно заново.
+        resetFrameSampler();
         loop();
       } else {
         cancelAnimationFrame(raf);
@@ -1129,6 +1272,26 @@ export async function createScene(
     setQuality(q: QualityOptions) {
       if (q.bloomLevels !== undefined) bloom.mipmapBlurPass.levels = q.bloomLevels;
       if (q.bloomIntensity !== undefined) bloom.intensity = q.bloomIntensity;
+      if (q.aa !== undefined) setAA(q.aa);
+      if (q.bloom !== undefined) {
+        // Порог 1.0 отсекает всю геометрию, поэтому «выключить bloom» = поднять
+        // порог за пределы досягаемости: проход остаётся в конвейере (пересборка
+        // композера на слабом устройстве дороже), но мипы больше ничего не ловят.
+        bloom.luminanceMaterial.threshold = q.bloom ? 1.0 : 1e4;
+        bloom.intensity = q.bloom ? (q.bloomIntensity ?? BLOOM_INTENSITY) : 0;
+        fakeGlow = !q.bloom;
+        if (fakeGlow) ensureHalos();
+        haloGroup.visible = fakeGlow;
+        // Без bloom HDR-эмиттеры просто клипаются в белый — возвращаем им LDR-цвет,
+        // иначе рёбра и блики выглядят как плоские белые пятна.
+        edgeMat.color.set(EDGE_COLOR).multiplyScalar(q.bloom ? EDGE_HDR : 1.0);
+        for (let i = 0; i < glints.length; i++) {
+          const isHero = i < heroCount;
+          const c = isHero ? STAR_COLOR : PIN_COLOR;
+          const k = q.bloom ? (isHero ? STAR_HDR : PIN_HDR) : 1.0;
+          (glints[i].sprite.material as THREE.SpriteMaterial).color.set(c).multiplyScalar(k);
+        }
+      }
       if (q.pixelRatio !== undefined) {
         renderer.setPixelRatio(q.pixelRatio);
         fit();
@@ -1173,6 +1336,7 @@ export async function createScene(
     dispose() {
       cancelAnimationFrame(raf);
       ro.disconnect();
+      canvas.removeEventListener('webglcontextlost', onContextLost);
       composer.dispose();
       boxGeo.dispose();
       edgeGeo.dispose();
@@ -1186,6 +1350,8 @@ export async function createScene(
       hazeMat.map?.dispose();
       hazeMat.dispose();
       for (const gl of glints) (gl.sprite.material as THREE.SpriteMaterial).dispose();
+      haloTex?.dispose();
+      for (const s of haloSprites) (s.material as THREE.SpriteMaterial).dispose();
       renderer.dispose();
     },
   };
@@ -1233,6 +1399,18 @@ export async function createScene(
       gl.sprite.scale.setScalar(gl.cfg.minScale + env * gl.maxScale);
     }
 
+    // Фолбэк-ореолы повторяют крупные блики (только когда bloom отключён).
+    if (fakeGlow) {
+      for (let i = 0; i < haloSprites.length; i++) {
+        const gl = glints[i];
+        const s = haloSprites[i];
+        s.position.copy(gl.sprite.position);
+        s.scale.setScalar(gl.sprite.scale.x * 1.7);
+        (s.material as THREE.SpriteMaterial).opacity =
+          (gl.sprite.material as THREE.SpriteMaterial).opacity * 0.26;
+      }
+    }
+
     composer.render(dt);
     if (!ready) {
       ready = true;
@@ -1240,21 +1418,173 @@ export async function createScene(
     }
   };
 
+  // -------------------------------------------------------------------------
+  // ЛЕСЕНКА ДЕГРАДАЦИИ. Статические сигналы (hardwareConcurrency, deviceMemory,
+  // строка GPU) на мобильных врут, поэтому единственный честный источник — само
+  // время кадра. Копим окно из 60 межкадровых интервалов, берём МЕДИАНУ (среднее
+  // убил бы один случайный GC-выброс) и, если она держится выше бюджета, делаем
+  // ОДИН шаг вниз, не чаще раза в 3с. Вверх не возвращаемся никогда: качели
+  // «упало-подняли-опять упало» заметнее, чем стабильно среднее качество.
+  //
+  // Отдельная защита от ложного срабатывания: если дисплей 30 Гц или вкладку
+  // тротлит браузер, межкадровый интервал будет большим независимо от нас. Поэтому
+  // после каждого шага проверяем, ПОМОГЛО ли: если медиана не улучшилась заметно,
+  // узкое место не в нашей отрисовке — лесенку останавливаем и до постера не
+  // доводим.
+  // -------------------------------------------------------------------------
+  const FRAME_BUDGET_MS = 22; // ~45 fps: ниже этого кадр уже «дёргается»
+  const WINDOW = 60;
+  const STEP_COOLDOWN_MS = 3000;
+  const samples: number[] = [];
+  let warmupUntil = performance.now() + 2000; // первые 2с — компиляция/прогрев кэшей
+  let lastStepAt = 0;
+  let ladderStep = 0;
+  let ladderDone = false;
+  let medianBeforeStep = 0;
+  let virtualClock = 0; // только для debug-прогона лесенки (feedFrameTimes)
+
+  const median = (a: number[]): number => {
+    const s = a.slice().sort((x, y) => x - y);
+    return s[s.length >> 1];
+  };
+
+  // Объявление функцией (не const): её зовёт setPaused, описанный ВЫШЕ по файлу.
+  function resetFrameSampler(): void {
+    samples.length = 0;
+    warmupUntil = performance.now() + 500;
+  }
+
+  // Ступени строго по убыванию стоимости кадра. У каждой есть проверка applies():
+  // ступень, которая ничего не изменит (например «DPR → 1.5», когда DPR уже 1.5 —
+  // ровно наш случай на не-retina мониторе), ПРОПУСКАЕТСЯ. Иначе лесенка потратила
+  // бы шаг впустую, а следующая проверка «помогло ли» справедливо решила бы, что
+  // тормозим не мы, и остановила спуск на ровном месте.
+  const LADDER: { applies: () => boolean; apply: () => void; label: string }[] = [
+    {
+      applies: () => renderer.getPixelRatio() > 1.5,
+      apply: () => handle.setQuality({ pixelRatio: 1.5 }),
+      label: 'DPR → 1.5',
+    },
+    {
+      // Ниже пола DPR суперсэмплинга больше нет — включаем дешёвый FXAA, иначе
+      // силуэт распадётся на ступеньки ровно в тот момент, когда устройству и так тяжело.
+      applies: () => renderer.getPixelRatio() > 1,
+      apply: () => handle.setQuality({ pixelRatio: 1, aa: true }),
+      label: 'DPR → 1 (+FXAA взамен суперсэмплинга)',
+    },
+    {
+      applies: () => bloom.mipmapBlurPass.levels > 4,
+      apply: () => handle.setQuality({ bloomLevels: 4 }),
+      label: 'bloom levels → 4',
+    },
+    {
+      // Самая дорогая часть кадра — мип-цепочка блума. Убираем её целиком, но
+      // сцену не оставляем плоской: включается запечённый ореол на спрайтах.
+      applies: () => !fakeGlow,
+      apply: () => handle.setQuality({ bloom: false }),
+      label: 'bloom выключен, включён фолбэк-ореол',
+    },
+  ];
+
+  /** Делает первый ПРИМЕНИМЫЙ шаг вниз. Возвращает описание для лога. */
+  const applyLadderStep = (): string => {
+    while (ladderStep < LADDER.length) {
+      const s = LADDER[ladderStep++];
+      if (!s.applies()) continue;
+      s.apply();
+      return s.label;
+    }
+    ladderDone = true;
+    return 'лесенка исчерпана → постер';
+  };
+
+  const sampleFrame = (frameMs: number, now: number) => {
+    if (ladderDone || now < warmupUntil) return;
+    samples.push(frameMs);
+    if (samples.length < WINDOW) return;
+    const med = median(samples);
+    samples.length = 0;
+
+    // Проверка «предыдущий шаг помог?» — иначе тормозим не мы.
+    if (ladderStep > 0 && medianBeforeStep > 0) {
+      if (med > medianBeforeStep * 0.95 && med > FRAME_BUDGET_MS) {
+        ladderDone = true;
+        console.debug(
+          `[hero] лесенка остановлена: шаг не дал выигрыша (${medianBeforeStep.toFixed(1)} → ${med.toFixed(1)} мс). Узкое место вне отрисовки сцены.`,
+        );
+        return;
+      }
+      medianBeforeStep = 0;
+    }
+    if (med <= FRAME_BUDGET_MS) return;
+    if (now - lastStepAt < STEP_COOLDOWN_MS) return;
+
+    lastStepAt = now;
+    medianBeforeStep = med;
+    const what = applyLadderStep();
+    console.debug(`[hero] медиана кадра ${med.toFixed(1)} мс > ${FRAME_BUDGET_MS} — ${what}`);
+    if (ladderDone) {
+      cancelAnimationFrame(raf);
+      paused = true;
+      opts.onExhausted?.();
+    }
+  };
+
   const loop = () => {
     if (paused) return;
     const now = performance.now();
-    let dt = (now - lastNow) / 1000;
+    const frameMs = now - lastNow;
+    let dt = frameMs / 1000;
     lastNow = now;
     if (dt > 0.1) dt = 0.1;
     update(dt);
-    raf = requestAnimationFrame(loop);
+    sampleFrame(frameMs, now);
+    if (!paused) raf = requestAnimationFrame(loop);
   };
+
+  // --- потеря контекста WebGL: восстановление не запрашиваем, отдаём постер ---
+  // preventDefault НЕ зовём намеренно: без него браузер не пытается восстановить
+  // контекст, а нам это и не нужно — постер надёжнее и не стоит ни байта.
+  const onContextLost = () => {
+    cancelAnimationFrame(raf);
+    paused = true;
+    ladderDone = true;
+    console.debug('[hero] контекст WebGL потерян — возвращаем постер');
+    opts.onContextLost?.();
+  };
+  canvas.addEventListener('webglcontextlost', onContextLost);
 
   const ro = new ResizeObserver(() => fit());
   ro.observe(canvas);
 
   if (opts.capture) {
-    handle.debug = { renderer, scene, camera, composer, bloom, edgeMat, glintGroup, hazeMat };
+    handle.debug = {
+      renderer,
+      scene,
+      camera,
+      composer,
+      bloom,
+      edgeMat,
+      glintGroup,
+      hazeMat,
+      feedFrameTimes(frameMs: number, frames: number) {
+        warmupUntil = 0; // прогрев в тесте не нужен
+        // Виртуальные часы ОБЩИЕ для всех вызовов: если начинать их заново, между
+        // вызовами время как будто откатывается назад и кулдаун между ступенями
+        // не истекает никогда.
+        if (!virtualClock) virtualClock = performance.now();
+        for (let i = 0; i < frames; i++) {
+          virtualClock += frameMs;
+          sampleFrame(frameMs, virtualClock);
+        }
+      },
+      ladderState: () => ({
+        step: ladderStep,
+        done: ladderDone,
+        pixelRatio: renderer.getPixelRatio(),
+        fakeGlow,
+      }),
+    };
   }
 
   loop();
