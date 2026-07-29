@@ -1,9 +1,9 @@
 import React from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { CheckCircle2, Globe } from 'lucide-react';
 import Container from '@/components/ui/Container';
 import TechBackdrop from '@/components/ui/TechBackdrop';
-import HeroCubes from '@/components/hero/HeroCubes';
 import type { Translation } from '@/i18n';
 
 export default function Hero({ t, base }: { t: Translation['hero']; base: string }) {
@@ -12,20 +12,30 @@ export default function Hero({ t, base }: { t: Translation['hero']; base: string
       <div className="absolute inset-0 bg-grid-dark" aria-hidden="true" />
       {/* Технический фон из макета: подсвеченные ячейки сетки + тонкие дуги */}
       <TechBackdrop cells />
-      {/* Лёгкое свечение за 3D-кластером (у макета крупного ореола нет — PNG кубиков несёт своё) */}
+      {/* Лёгкое свечение за кластером (у макета крупного ореола нет — PNG кубиков несёт своё) */}
       <div
         className="pointer-events-none absolute right-[-8%] top-[-10%] h-[640px] w-[640px] rounded-full bg-accent-500/10 blur-[140px]"
         aria-hidden="true"
       />
 
-      {/* 3D-кластер справа сверху (как в макете — наезжает на верх).
-          Внутри: статичный постер (LCP) + ленивая three-сцена с кроссфейдом.
-          Блок pointer-events-none (ссылки слева должны кликаться), само
-          изображение и канвас декоративные (alt="" / aria-hidden), а вот кнопку
-          паузы внутри прятать от скринридеров нельзя — поэтому aria-hidden
-          висит на детях, а не на обёртке. */}
-      <div className="pointer-events-none absolute right-[-1%] top-[-7%] hidden w-[26%] lg:block">
-        <HeroCubes pauseLabel={t.pauseAnimation} playLabel={t.playAnimation} />
+      {/* Статичный кубический кластер справа сверху — 1:1 с макетом (Image node 155:293:
+          x=100, y=0, 1536×1024 в кадре 1440×1061). Позиционируется кадр-локально в
+          центрированном контейнере 1440px — как подсвеченные ячейки TechBackdrop, —
+          поэтому совпадает с сеткой на вьюпортах ≥1440. Блок декоративный
+          (pointer-events-none / aria-hidden), картинка только на lg+ (на мобиле макет иной). */}
+      <div
+        className="pointer-events-none absolute left-1/2 top-0 hidden h-full w-[1440px] -translate-x-1/2 lg:block"
+        aria-hidden="true"
+      >
+        <Image
+          src="/hero-static.webp"
+          alt=""
+          width={1536}
+          height={1024}
+          priority
+          sizes="1536px"
+          className="absolute left-[100px] top-0 h-[1024px] w-[1536px] max-w-none"
+        />
       </div>
 
       <Container>
