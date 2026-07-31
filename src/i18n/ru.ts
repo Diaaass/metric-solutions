@@ -298,6 +298,10 @@ const ru: Translation = {
         'Свяжитесь с Metric Solutions, чтобы обсудить технологическую задачу или проект: офис в Астане, email, телефон и форма заявки на консультацию.',
     },
   },
+
+  whatsapp: {
+    ariaLabel: 'Написать нам в WhatsApp',
+  },
 };
 
 export default ru;

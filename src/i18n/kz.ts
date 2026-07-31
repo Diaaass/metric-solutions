@@ -298,6 +298,10 @@ const kz: Translation = {
         'Технологиялық міндет немесе жоба бойынша Metric Solutions-пен байланысыңыз: Астанадағы кеңсе, email, телефон және консультацияға өтінім нысаны.',
     },
   },
+
+  whatsapp: {
+    ariaLabel: 'Бізге WhatsApp-қа жазыңыз',
+  },
 };
 
 export default kz;

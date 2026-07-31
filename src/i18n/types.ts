@@ -169,6 +169,12 @@ export interface Translation {
     };
   };
 
+  /** Плавающая кнопка WhatsApp в нижнем левом углу */
+  whatsapp: {
+    /** aria-label/tooltip кнопки */
+    ariaLabel: string;
+  };
+
   /** SEO-метаданные по страницам (title + description на каждую из 5 страниц) */
   seo: {
     home: { title: string; description: string };

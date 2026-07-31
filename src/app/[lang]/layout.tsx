@@ -5,6 +5,7 @@ import '../globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import TickerBar from '@/components/layout/TickerBar';
+import WhatsAppWidget from '@/components/layout/WhatsAppWidget';
 import { translations } from '@/i18n';
 import type { Lang } from '@/i18n';
 import { isLang, SITE_URL } from '@/i18n/seo';
@@ -70,6 +71,7 @@ export default async function LangLayout({
         <Header nav={t.nav} lang={lang} />
         <main className="min-h-screen">{children}</main>
         <Footer nav={t.nav} footer={t.footer} address={t.contactsPage.addressText} lang={lang} />
+        <WhatsAppWidget ariaLabel={t.whatsapp.ariaLabel} />
       </body>
     </html>
   );
