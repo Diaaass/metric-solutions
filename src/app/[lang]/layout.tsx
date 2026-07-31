@@ -8,6 +8,7 @@ import TickerBar from '@/components/layout/TickerBar';
 import { translations } from '@/i18n';
 import type { Lang } from '@/i18n';
 import { isLang, SITE_URL } from '@/i18n/seo';
+import { getMetals } from '@/lib/metals';
 
 // Узкий гротеск-капс с кириллицей — дисплейные заголовки (аналог Bebas Neue из макета)
 const oswald = Oswald({
@@ -47,7 +48,7 @@ export const dynamicParams = false;
 // Атрибут <html lang>: kz → kk (ISO 639-1 для казахского), ru → ru.
 const HTML_LANG: Record<Lang, string> = { ru: 'ru', kz: 'kk' };
 
-export default function LangLayout({
+export default async function LangLayout({
   children,
   params,
 }: {
@@ -57,13 +58,15 @@ export default function LangLayout({
   if (!isLang(params.lang)) notFound();
   const lang = params.lang;
   const t = translations[lang];
+  const metals = await getMetals();
 
   return (
     <html lang={HTML_LANG[lang]}>
       <body className={`${oswald.variable} ${geologica.variable} ${montserrat.variable} font-sans`}>
         {/* Полоса котировок над шапкой: скроллится вместе со страницей,
-            шапка ниже остаётся sticky. Без ключа API не рендерится. */}
-        <TickerBar t={t.metals} langCode={lang} />
+            шапка ниже остаётся sticky. Данные запечены на сервере (кеш 12ч),
+            поэтому цены видны с первого кадра; без ключа полоса не рендерится. */}
+        <TickerBar t={t.metals} langCode={lang} data={metals} />
         <Header nav={t.nav} lang={lang} />
         <main className="min-h-screen">{children}</main>
         <Footer nav={t.nav} footer={t.footer} address={t.contactsPage.addressText} lang={lang} />
