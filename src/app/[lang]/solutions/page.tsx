@@ -1,10 +1,12 @@
 import React from 'react';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Container from '@/components/ui/Container';
 import { Container as ContainerIcon, Factory, CheckCircle, type LucideIcon } from 'lucide-react';
 import { translations } from '@/i18n';
 import { buildMetadata, isLang } from '@/i18n/seo';
+import { servicesBySolution } from '@/data/serviceLinks';
 
 const solutionIcons: Record<string, LucideIcon> = {
   nomadlab: ContainerIcon,
@@ -20,7 +22,11 @@ export function generateMetadata({ params }: Props): Metadata {
 
 export default function SolutionsPage({ params }: Props) {
   if (!isLang(params.lang)) notFound();
-  const t = translations[params.lang].solutionsPage;
+  const lang = params.lang;
+  const t = translations[lang].solutionsPage;
+  const serviceItems = translations[lang].servicesPage.items;
+  const detail = translations[lang].serviceDetail;
+  const base = lang === 'kz' ? '/kz' : '';
 
   return (
     <div className="relative overflow-hidden bg-ink-950">
@@ -54,6 +60,9 @@ export default function SolutionsPage({ params }: Props) {
         <div className="relative space-y-10 pb-24 pt-6">
           {t.items.map((item, i) => {
             const Icon = solutionIcons[item.slug] ?? ContainerIcon;
+            const relatedServices = servicesBySolution(item.slug)
+              .map((slug) => serviceItems.find((service) => service.slug === slug))
+              .filter((service): service is (typeof serviceItems)[number] => Boolean(service));
             return (
               <article
                 key={item.slug}
@@ -89,6 +98,26 @@ export default function SolutionsPage({ params }: Props) {
                     ))}
                   </ul>
                 </div>
+
+                {/* Связанные направления: ссылки на детальные страницы услуг */}
+                {relatedServices.length > 0 && (
+                  <div className="lg:col-span-3 border-t border-[rgba(26,92,255,0.3)] pt-6 flex flex-wrap items-center gap-x-3 gap-y-3">
+                    <span className="text-sm font-light text-white/70">
+                      {detail.relatedServicesTitle}:
+                    </span>
+                    {relatedServices.map((service) => (
+                      <Link
+                        key={service.slug}
+                        href={`${base}/services/${service.slug}`}
+                        className="inline-flex items-center rounded-full border border-[rgba(26,92,255,0.5)] px-4 py-1.5 text-sm font-light text-white
+                                   transition-colors hover:border-accent-500/80 hover:text-accent-300
+                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950"
+                      >
+                        {service.title}
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </article>
             );
           })}

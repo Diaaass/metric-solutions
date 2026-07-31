@@ -1,5 +1,8 @@
 export type Lang = 'ru' | 'kz';
 
+/** Слаги детальных страниц направлений (/services/[slug]). */
+export type ServiceSlug = 'geometallurgy' | 'beneficiation' | 'hydrometallurgy';
+
 export interface Translation {
   nav: {
     home: string;
@@ -77,7 +80,30 @@ export interface Translation {
     breadcrumb: string;
     title: string;
     subtitle: string;
-    items: Array<{ num: string; title: string; text: string }>;
+    items: Array<{ num: string; slug: ServiceSlug; title: string; text: string }>;
+  };
+
+  /** Детальные страницы направлений (/services/[slug]) и перекрёстные ссылки с решениями */
+  serviceDetail: {
+    /** Начало хлебных крошек; название направления добавляется в разметке */
+    breadcrumbPrefix: string;
+    /** Ссылка «Подробнее» на карточках /services */
+    moreLabel: string;
+    /** Заголовок блока со связанными решениями на детальной странице */
+    relatedSolutionsTitle: string;
+    /** Подпись ссылки на карточке связанного решения */
+    relatedSolutionsLink: string;
+    /** Заголовок строки со связанными направлениями на /solutions */
+    relatedServicesTitle: string;
+    items: Record<
+      ServiceSlug,
+      {
+        lead: string;
+        paragraphs: string[];
+        seoTitle: string;
+        seoDescription: string;
+      }
+    >;
   };
 
   solutionsPage: {

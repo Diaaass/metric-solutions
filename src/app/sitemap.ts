@@ -1,10 +1,18 @@
 import type { MetadataRoute } from 'next';
+import { SERVICE_SLUGS } from '@/i18n/seo';
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://metricsolutions.kz';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  const routes = ['', '/about', '/services', '/solutions', '/contacts'];
+  const routes = [
+    '',
+    '/about',
+    '/services',
+    '/solutions',
+    '/contacts',
+    ...SERVICE_SLUGS.map((slug) => `/services/${slug}`),
+  ];
 
   return routes.flatMap((path) => {
     const ruUrl = `${BASE_URL}${path}`;
