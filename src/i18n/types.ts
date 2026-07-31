@@ -37,11 +37,12 @@ export interface Translation {
     cards: Array<{ icon: string; title: string; text: string }>;
   };
 
-  /** Секция «Направления деятельности» на главной (6 карточек) */
-  homeDirections: {
+  /** Краткий блок услуг на главной: изображение + обобщённая подпись + ссылка на /services */
+  homeServices: {
     eyebrow: string;
     title: string;
-    cards: Array<{ title: string; text: string }>;
+    text: string;
+    btn: string;
   };
 
   /** Баннер «Готовы обсудить ваш проект?» */

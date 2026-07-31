@@ -10,7 +10,7 @@ export default function ServicesPreview({
   banner,
   base,
 }: {
-  t: Translation['homeDirections'];
+  t: Translation['homeServices'];
   banner: Translation['ctaBanner'];
   base: string;
 }) {
@@ -20,23 +20,30 @@ export default function ServicesPreview({
       <TechBackdrop />
       <Container>
         <div className="relative">
-          <p className="eyebrow mb-4 animate-fade-in">{t.eyebrow}</p>
-          <h2 className="max-w-2xl mb-12 animate-fade-in">{t.title}</h2>
+          {/* Краткий блок услуг: изображение слева, текст и ссылка справа */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-10 lg:gap-14">
+            <div className="overflow-hidden rounded-[30px] border border-[rgba(26,92,255,0.5)] shadow-card-glow animate-fade-in">
+              <Image
+                src="/service-placeholder.svg"
+                alt=""
+                width={1600}
+                height={900}
+                unoptimized
+                sizes="(min-width: 1024px) 592px, 100vw"
+                className="h-auto w-full"
+              />
+            </div>
 
-          {/* 6 карточек 2×3 (344×216 в макете) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-12">
-            {t.cards.map((card, i) => (
-              <div
-                key={i}
-                className="card min-h-[200px] animate-fade-in-up"
-                style={{ animationDelay: `${(i + 1) * 70}ms` }}
-              >
-                <h3 className="font-card !text-base font-bold mb-5">{card.title}</h3>
-                <p className="font-card text-[15px] font-medium text-white/95 leading-snug">
-                  {card.text}
-                </p>
-              </div>
-            ))}
+            <div className="animate-fade-in-up delay-100">
+              <p className="eyebrow mb-4">{t.eyebrow}</p>
+              <h2 className="mb-5">{t.title}</h2>
+              <p className="max-w-xl text-[15px] md:text-base font-extralight text-white/95 leading-relaxed tracking-tight">
+                {t.text}
+              </p>
+              <Link href={`${base}/services`} className="btn-secondary mt-8">
+                {t.btn}
+              </Link>
+            </div>
           </div>
 
           {/* CTA-баннер с фото производства (rounded-30, рамка #01549e, свечение) */}

@@ -23,7 +23,7 @@ export default function Home({ params }: Props) {
     <>
       <Hero t={t.hero} base={base} />
       <HomeAbout t={t.homeAbout} />
-      <ServicesPreview t={t.homeDirections} banner={t.ctaBanner} base={base} />
+      <ServicesPreview t={t.homeServices} banner={t.ctaBanner} base={base} />
     </>
   );
 }
