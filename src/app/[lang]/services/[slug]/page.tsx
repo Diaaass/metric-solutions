@@ -82,15 +82,14 @@ export default function ServiceDetailPage({ params }: Props) {
           </p>
         </div>
 
-        {/* Изображение-заглушка (заменяется на реальное фото направления) */}
+        {/* Временное изображение направления (заменяется на реальное фото заказчика) */}
         <div className="relative animate-fade-in delay-200">
           <div className="overflow-hidden rounded-[30px] border border-[rgba(26,92,255,0.5)] shadow-card-glow">
             <Image
-              src="/service-placeholder.svg"
+              src={`/service-${params.slug}.webp`}
               alt=""
               width={1600}
               height={900}
-              unoptimized
               priority
               sizes="(min-width: 1280px) 1216px, 100vw"
               className="h-auto w-full"

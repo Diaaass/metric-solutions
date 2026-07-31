@@ -24,11 +24,10 @@ export default function ServicesPreview({
           <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-10 lg:gap-14">
             <div className="overflow-hidden rounded-[30px] border border-[rgba(26,92,255,0.5)] shadow-card-glow animate-fade-in">
               <Image
-                src="/service-placeholder.svg"
+                src="/service-teaser.webp"
                 alt=""
                 width={1600}
                 height={900}
-                unoptimized
                 sizes="(min-width: 1024px) 592px, 100vw"
                 className="h-auto w-full"
               />

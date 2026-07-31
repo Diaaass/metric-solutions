@@ -5,10 +5,10 @@ import type { Translation } from '@/i18n';
 
 /**
  * Галерея на главной: 4 изображения + описание под ними.
- * Файлы названы предсказуемо (gallery-1…4.svg) — заглушки заменяются
+ * Файлы названы предсказуемо (gallery-1…4.webp) — временные картинки заменяются
  * на реальные фото лабораторий и производств без правки кода.
  */
-const IMAGES = ['/gallery-1.svg', '/gallery-2.svg', '/gallery-3.svg', '/gallery-4.svg'];
+const IMAGES = ['/gallery-1.webp', '/gallery-2.webp', '/gallery-3.webp', '/gallery-4.webp'];
 
 export default function Gallery({ t }: { t: Translation['gallery'] }) {
   return (
@@ -32,7 +32,6 @@ export default function Gallery({ t }: { t: Translation['gallery'] }) {
                   alt=""
                   width={800}
                   height={600}
-                  unoptimized
                   sizes="(min-width: 1024px) 288px, (min-width: 640px) 50vw, 100vw"
                   className="h-auto w-full"
                 />
