@@ -12,30 +12,23 @@ export default function Hero({ t, base }: { t: Translation['hero']; base: string
       <div className="absolute inset-0 bg-grid-dark" aria-hidden="true" />
       {/* Технический фон из макета: подсвеченные ячейки сетки + тонкие дуги */}
       <TechBackdrop cells />
-      {/* Лёгкое свечение за кластером (у макета крупного ореола нет — PNG кубиков несёт своё) */}
+      {/* Логотип компании в правой части экрана (временно вместо 3D-объекта).
+          Блок декоративный — в шапке уже есть логотип со ссылкой и подписью. */}
       <div
-        className="pointer-events-none absolute right-[-8%] top-[-10%] h-[640px] w-[640px] rounded-full bg-accent-500/10 blur-[140px]"
-        aria-hidden="true"
-      />
-
-      {/* Статичный кубический кластер справа сверху — 1:1 с макетом (Image node 155:293:
-          x=100, y=0, 1536×1024 в кадре 1440×1061). Позиционируется кадр-локально в
-          центрированном контейнере 1440px — как подсвеченные ячейки TechBackdrop, —
-          поэтому совпадает с сеткой на вьюпортах ≥1440. Блок декоративный
-          (pointer-events-none / aria-hidden), картинка только на lg+ (на мобиле макет иной). */}
-      <div
-        className="pointer-events-none absolute left-1/2 top-0 hidden h-full w-[1440px] -translate-x-1/2 lg:block"
+        className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-full max-w-7xl -translate-x-1/2 items-center justify-end px-4 sm:px-6 lg:px-8 xl:flex"
         aria-hidden="true"
       >
-        <Image
-          src="/hero-static.webp"
-          alt=""
-          width={1536}
-          height={1024}
-          priority
-          sizes="1536px"
-          className="absolute left-[100px] top-0 h-[1024px] w-[1536px] max-w-none"
-        />
+        <div className="relative">
+          <div className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-500/10 blur-[140px]" />
+          <Image
+            src="/logo-figma.svg"
+            alt=""
+            width={120}
+            height={170}
+            priority
+            className="relative h-auto w-[240px] drop-shadow-[0_0_70px_rgba(0,136,255,0.45)] 2xl:w-[280px]"
+          />
+        </div>
       </div>
 
       <Container>
