@@ -194,6 +194,7 @@ const ru: Translation = {
     breadcrumb: 'Главная / Решения',
     heroTitle1: 'Nomad',
     heroTitle1Accent: 'Lab',
+    heroTitleConjunction: 'и',
     heroTitle2: 'Nomad',
     heroTitle2Accent: 'Pilot Plant',
     heroSubtitle:

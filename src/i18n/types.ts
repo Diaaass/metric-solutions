@@ -108,6 +108,8 @@ export interface Translation {
     breadcrumb: string;
     heroTitle1: string;
     heroTitle1Accent: string;
+    /** Союз между двумя частями заголовка («и» / «және») */
+    heroTitleConjunction: string;
     heroTitle2: string;
     heroTitle2Accent: string;
     heroSubtitle: string;

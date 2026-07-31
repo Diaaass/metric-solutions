@@ -194,6 +194,7 @@ const kz: Translation = {
     breadcrumb: 'Басты бет / Шешімдер',
     heroTitle1: 'Nomad',
     heroTitle1Accent: 'Lab',
+    heroTitleConjunction: 'және',
     heroTitle2: 'Nomad',
     heroTitle2Accent: 'Pilot Plant',
     heroSubtitle:

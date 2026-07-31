@@ -44,7 +44,7 @@ export default function SolutionsPage({ params }: Props) {
           {/* Дисплейный заголовок с градиентными частями (как в макете) */}
           <h1 className="!text-4xl md:!text-6xl mb-6 animate-fade-in-up">
             {t.heroTitle1}
-            <span className="text-grad">{t.heroTitle1Accent}</span> и
+            <span className="text-grad">{t.heroTitle1Accent}</span> {t.heroTitleConjunction}
             <br />
             {t.heroTitle2} <span className="text-grad">{t.heroTitle2Accent}</span>
           </h1>
