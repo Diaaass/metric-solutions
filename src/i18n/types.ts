@@ -22,8 +22,6 @@ export interface Translation {
     stat1Value: string;
     stat1Label: string;
     stat1LabelAccent: string;
-    stat2Value: string;
-    stat2Label: string;
     /** Кнопка над 3D-визуалом: остановить анимацию (WCAG 2.2.2) */
     pauseAnimation: string;
     /** Кнопка над 3D-визуалом: возобновить анимацию */
@@ -51,13 +49,6 @@ export interface Translation {
     title: string;
     subtitle: string;
     btn: string;
-  };
-
-  /** Секция «Результаты в цифрах» */
-  results: {
-    eyebrow: string;
-    title: string;
-    items: Array<{ value: string; label: string }>;
   };
 
   footer: {
