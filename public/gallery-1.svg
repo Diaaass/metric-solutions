@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" role="img" aria-label="">
+  <defs>
+    <pattern id="g1-grid" width="50" height="50" patternUnits="userSpaceOnUse">
+      <path d="M50 0H0v50" fill="none" stroke="rgba(90,140,255,0.10)" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="g1-glow" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#0088ff" stop-opacity="0.26"/>
+      <stop offset="60%" stop-color="#0088ff" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#0088ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="g1-s" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0088ff"/>
+      <stop offset="100%" stop-color="#005299"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="#001a3d"/>
+  <rect width="800" height="600" fill="url(#g1-grid)"/>
+  <rect width="800" height="600" fill="url(#g1-glow)"/>
+
+  <!-- Мотив: узловая сетка / модель месторождения -->
+  <g stroke="url(#g1-s)" stroke-opacity="0.5" stroke-width="1.6" fill="none">
+    <path d="M180 400 L300 250 L420 330 L540 200 L640 300"/>
+    <path d="M180 300 L300 170 L420 250 L540 120 L640 220" stroke-opacity="0.3"/>
+    <path d="M180 400 L180 300M300 250 L300 170M420 330 L420 250M540 200 L540 120M640 300 L640 220"
+          stroke-opacity="0.25"/>
+  </g>
+  <g fill="#0088ff" fill-opacity="0.85">
+    <circle cx="180" cy="400" r="7"/><circle cx="300" cy="250" r="7"/><circle cx="420" cy="330" r="7"/>
+    <circle cx="540" cy="200" r="7"/><circle cx="640" cy="300" r="7"/>
+  </g>
+  <g fill="#5aa9ff" fill-opacity="0.4">
+    <circle cx="180" cy="300" r="5"/><circle cx="300" cy="170" r="5"/><circle cx="420" cy="250" r="5"/>
+    <circle cx="540" cy="120" r="5"/><circle cx="640" cy="220" r="5"/>
+  </g>
+</svg>

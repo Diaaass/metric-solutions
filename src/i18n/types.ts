@@ -45,6 +45,12 @@ export interface Translation {
     btn: string;
   };
 
+  /** Галерея на главной: 4 изображения + описание под ними */
+  gallery: {
+    title: string;
+    text: string;
+  };
+
   /** Баннер «Готовы обсудить ваш проект?» */
   ctaBanner: {
     title: string;
