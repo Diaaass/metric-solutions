@@ -37,8 +37,8 @@ export default function ServicesPage({ params }: Props) {
           </p>
         </div>
 
-        {/* 6 направлений: градиентный номер + заголовок + текст, 2 колонки */}
-        <div className="relative grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-16 pb-24 pt-8">
+        {/* 3 направления: иконка + заголовок + текст, в ряд на lg, стопкой на мобильном */}
+        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-x-10 lg:gap-x-16 gap-y-16 pb-24 pt-8">
           {t.items.map((item, i) => (
             <div
               key={i}
