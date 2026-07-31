@@ -4,7 +4,6 @@ import Hero from '@/components/sections/Hero';
 import HomeAbout from '@/components/sections/HomeAbout';
 import ServicesPreview from '@/components/sections/ServicesPreview';
 import Stats from '@/components/sections/Stats';
-import MetalPrices from '@/components/sections/MetalPrices';
 import { translations } from '@/i18n';
 import { buildMetadata, isLang } from '@/i18n/seo';
 
@@ -27,7 +26,6 @@ export default function Home({ params }: Props) {
       <HomeAbout t={t.homeAbout} />
       <ServicesPreview t={t.homeDirections} banner={t.ctaBanner} base={base} />
       <Stats t={t.results} />
-      <MetalPrices t={t.metals} langCode={lang} />
     </>
   );
 }

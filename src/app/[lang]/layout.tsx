@@ -4,6 +4,7 @@ import { Oswald, Geologica, Montserrat } from 'next/font/google';
 import '../globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import TickerBar from '@/components/layout/TickerBar';
 import { translations } from '@/i18n';
 import type { Lang } from '@/i18n';
 import { isLang, SITE_URL } from '@/i18n/seo';
@@ -60,6 +61,9 @@ export default function LangLayout({
   return (
     <html lang={HTML_LANG[lang]}>
       <body className={`${oswald.variable} ${geologica.variable} ${montserrat.variable} font-sans`}>
+        {/* Полоса котировок над шапкой: скроллится вместе со страницей,
+            шапка ниже остаётся sticky. Без ключа API не рендерится. */}
+        <TickerBar t={t.metals} langCode={lang} />
         <Header nav={t.nav} lang={lang} />
         <main className="min-h-screen">{children}</main>
         <Footer nav={t.nav} footer={t.footer} address={t.contactsPage.addressText} lang={lang} />

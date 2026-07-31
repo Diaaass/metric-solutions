@@ -153,13 +153,13 @@ export interface Translation {
     privacyNote: string;
   };
 
+  /** Полоса котировок над шапкой (TickerBar): подписи для screen reader и tooltip */
   metals: {
+    /** aria-label полосы */
     eyebrow: string;
-    title: string;
-    subtitle: string;
-    updatedLabel: string;
-    sourceLabel: string;
+    /** tooltip полосы: данные носят справочный характер */
     disclaimer: string;
+    /** Полные названия металлов — для скринридера вместо символов Au/Ag/… */
     names: {
       gold: string;
       silver: string;
