@@ -5,6 +5,14 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 3;
 const ipHits = new Map<string, number[]>();
 
+/**
+ * Минимальное время «человеческого» заполнения формы. Счётчик частоты выше
+ * живёт в памяти процесса и на serverless почти бесполезен (у каждого инстанса
+ * своя карта), а эта проверка не хранит состояние вообще: клиент кладёт в форму
+ * метку времени показа, сервер смотрит, сколько прошло до отправки.
+ */
+const MIN_FILL_MS = 3000;
+
 function rateLimit(ip: string): boolean {
   const now = Date.now();
   const hits = (ipHits.get(ip) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
@@ -58,6 +66,16 @@ function validate(body: unknown): { ok: true; data: Payload } | { ok: false; err
   if (!PHONE_DIGITS_RE.test(phone.replace(/\D/g, '')))
     return { ok: false, error: 'Некорректный телефон' };
   if (website) return { ok: false, error: 'spam' };
+
+  // Метку ставит наш же клиент при монтировании формы, поэтому её отсутствие
+  // или мусор в ней означают, что POST пришёл мимо формы — то есть от бота.
+  const renderedAt = Number(b.renderedAt);
+  if (!Number.isFinite(renderedAt) || renderedAt <= 0) return { ok: false, error: 'spam' };
+
+  // Отрицательное значение — часы клиента спешат относительно серверных;
+  // это не повод терять заявку, поэтому такой случай пропускаем.
+  const elapsed = Date.now() - renderedAt;
+  if (elapsed >= 0 && elapsed < MIN_FILL_MS) return { ok: false, error: 'spam' };
 
   return { ok: true, data: { name, email, phone, company, message, website } };
 }

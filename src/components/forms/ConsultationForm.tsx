@@ -21,8 +21,15 @@ export default function ConsultationForm({ t }: { t: Translation['form'] }) {
   const [error, setError] = useState('');
   const [phoneError, setPhoneError] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // Метка времени показа формы для антиспама. Ставится в useEffect, а не при
+  // рендере: иначе сервер и клиент дали бы разные значения и React ругался бы
+  // на несовпадение при гидрации.
+  const [renderedAt, setRenderedAt] = useState(0);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    setRenderedAt(Date.now());
+  }, []);
 
   const PHONE_PREFIX = '+7 (';
 
@@ -86,7 +93,7 @@ export default function ConsultationForm({ t }: { t: Translation['form'] }) {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, website }),
+        body: JSON.stringify({ ...formData, website, renderedAt }),
       });
 
       const data = await res.json();
@@ -157,6 +164,7 @@ export default function ConsultationForm({ t }: { t: Translation['form'] }) {
               onChange={(e) => setWebsite(e.target.value)}
             />
           </label>
+          <input type="hidden" name="renderedAt" value={renderedAt} readOnly />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
