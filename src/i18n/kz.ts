@@ -20,8 +20,6 @@ const kz: Translation = {
     stat1Value: '2',
     stat1Label: 'Меншікті мобильді шешім:',
     stat1LabelAccent: 'NomadLab және Nomad Pilot Plant',
-    pauseAnimation: 'Анимацияны тоқтату',
-    playAnimation: 'Анимацияны жалғастыру',
   },
 
   homeAbout: {

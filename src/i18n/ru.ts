@@ -20,8 +20,6 @@ const ru: Translation = {
     stat1Value: '2',
     stat1Label: 'Собственных мобильных решения:',
     stat1LabelAccent: 'NomadLab и Nomad Pilot Plant',
-    pauseAnimation: 'Остановить анимацию',
-    playAnimation: 'Возобновить анимацию',
   },
 
   homeAbout: {

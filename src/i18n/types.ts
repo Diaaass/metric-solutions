@@ -22,10 +22,6 @@ export interface Translation {
     stat1Value: string;
     stat1Label: string;
     stat1LabelAccent: string;
-    /** Кнопка над 3D-визуалом: остановить анимацию (WCAG 2.2.2) */
-    pauseAnimation: string;
-    /** Кнопка над 3D-визуалом: возобновить анимацию */
-    playAnimation: string;
   };
 
   /** Секция «О компании» на главной (наука/технологии/опыт + 3 мини-карточки) */
