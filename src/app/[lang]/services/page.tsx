@@ -1,9 +1,10 @@
 import React from 'react';
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Container from '@/components/ui/Container';
-import { ArrowRight, FlaskConical } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { translations } from '@/i18n';
 import { buildMetadata, isLang } from '@/i18n/seo';
 
@@ -51,10 +52,15 @@ export default function ServicesPage({ params }: Props) {
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950"
               style={{ animationDelay: `${(i + 1) * 80}ms` }}
             >
-              <FlaskConical
-                className="h-14 w-14 text-accent-400 drop-shadow-icon mb-5 transition-transform group-hover:-translate-y-0.5"
-                strokeWidth={1.4}
-                aria-hidden="true"
+              {/* Камень из брендбука вместо линейной иконки: у каждого направления
+                  свой вариант логотипа. Синее свечение drop-shadow-icon намеренно
+                  не используем — оно перекрашивало бы цветной камень. */}
+              <Image
+                src={`/icon-service-${item.slug}.png`}
+                alt=""
+                width={88}
+                height={88}
+                className="mb-5 h-[88px] w-[88px] transition-transform group-hover:-translate-y-0.5"
               />
               <h3 className="!text-xl mb-3 tracking-tight transition-colors group-hover:text-accent-300">
                 {item.title}

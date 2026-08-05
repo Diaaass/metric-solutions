@@ -4,13 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Container from '@/components/ui/Container';
-import {
-  ArrowRight,
-  Container as ContainerIcon,
-  Factory,
-  FlaskConical,
-  type LucideIcon,
-} from 'lucide-react';
+import { ArrowRight, Container as ContainerIcon, Factory, type LucideIcon } from 'lucide-react';
 import { translations } from '@/i18n';
 import { buildServiceMetadata, isLang, isServiceSlug, SERVICE_SLUGS } from '@/i18n/seo';
 import { SOLUTIONS_BY_SERVICE } from '@/data/serviceLinks';
@@ -69,10 +63,13 @@ export default function ServiceDetailPage({ params }: Props) {
           </p>
 
           <div className="flex items-start gap-5 mb-6 animate-fade-in-up">
-            <FlaskConical
-              className="h-12 w-12 shrink-0 text-accent-400 drop-shadow-icon mt-1 hidden sm:block"
-              strokeWidth={1.4}
-              aria-hidden="true"
+            {/* Тот же камень направления, что и на карточке в списке услуг */}
+            <Image
+              src={`/icon-service-${slug}.png`}
+              alt=""
+              width={64}
+              height={64}
+              className="mt-1 hidden h-16 w-16 shrink-0 sm:block"
             />
             <h1 className="!text-3xl md:!text-5xl">{card.title}</h1>
           </div>
