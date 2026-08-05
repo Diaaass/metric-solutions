@@ -4,14 +4,23 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Container from '@/components/ui/Container';
-import { ArrowRight, Container as ContainerIcon, Factory, type LucideIcon } from 'lucide-react';
+import {
+  ArrowRight,
+  ClipboardCheck,
+  Container as ContainerIcon,
+  Factory,
+  type LucideIcon,
+} from 'lucide-react';
 import { translations } from '@/i18n';
 import { buildServiceMetadata, isLang, isServiceSlug, SERVICE_SLUGS } from '@/i18n/seo';
 import { SOLUTIONS_BY_SERVICE } from '@/data/serviceLinks';
 
+// Набор синхронизирован с /solutions: иконка решения не должна меняться
+// от страницы к странице.
 const solutionIcons: Record<string, LucideIcon> = {
   nomadlab: ContainerIcon,
   'nomad-pilot-plant': Factory,
+  'tech-audit': ClipboardCheck,
 };
 
 type Props = { params: { lang: string; slug: string } };

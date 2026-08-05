@@ -3,7 +3,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Container from '@/components/ui/Container';
-import { Container as ContainerIcon, Factory, CheckCircle, type LucideIcon } from 'lucide-react';
+import {
+  Container as ContainerIcon,
+  Factory,
+  CheckCircle,
+  ClipboardCheck,
+  type LucideIcon,
+} from 'lucide-react';
 import { translations } from '@/i18n';
 import { buildMetadata, isLang } from '@/i18n/seo';
 import { servicesBySolution } from '@/data/serviceLinks';
@@ -11,6 +17,9 @@ import { servicesBySolution } from '@/data/serviceLinks';
 const solutionIcons: Record<string, LucideIcon> = {
   nomadlab: ContainerIcon,
   'nomad-pilot-plant': Factory,
+  // Аудит — это не установка, а работа с чек-листом: ClipboardCheck читается
+  // однозначнее, чем Gauge, который скорее про измерение показателей.
+  'tech-audit': ClipboardCheck,
 };
 
 type Props = { params: { lang: string } };
