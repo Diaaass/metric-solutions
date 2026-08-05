@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Lang, Translation } from '@/i18n';
-import type { MetalKey, MetalsData } from '@/lib/metals';
+import type { MetalKey, MetalsData, MetalUnit } from '@/lib/metals';
 
 /** Символы элементов из таблицы Менделеева вместо названий металлов. */
 const SYMBOLS: Record<MetalKey, string> = {
@@ -29,11 +29,11 @@ export default function TickerBar({
   if (!data.available || data.metals.length === 0) return null;
 
   const locale = langCode === 'kz' ? 'kk-KZ' : 'ru-RU';
-  const priceFmt = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  const currency = data.currency;
+  // Унция — с центами (Au ≈ 4 235,50), тонна — целыми долларами (Cu ≈ 14 850).
+  const priceFmt: Record<MetalUnit, Intl.NumberFormat> = {
+    toz: new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    mt: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }),
+  };
 
   return (
     <div
@@ -61,9 +61,12 @@ export default function TickerBar({
               </span>
               {/* Скринридеру — полное название металла вместо символа */}
               <span className="sr-only">{t.names[m.key]}</span>
-              <span className="font-light tabular-nums text-white">{priceFmt.format(m.price)}</span>
-              <span className="text-[10px] font-light uppercase tracking-wide text-white/40">
-                {currency}
+              <span className="font-light tabular-nums text-white">
+                {priceFmt[m.unit].format(m.price)}
+              </span>
+              {/* Единица измерения: без uppercase — иначе «$/т» превратится в «$/Т» */}
+              <span className="text-[10px] font-light tracking-wide text-white/40">
+                {t.units[m.unit]}
               </span>
             </span>
           </React.Fragment>

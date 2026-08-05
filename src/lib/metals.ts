@@ -2,17 +2,46 @@
 const METAL_KEYS = ['gold', 'silver', 'copper', 'zinc', 'aluminum'] as const;
 
 export type MetalKey = (typeof METAL_KEYS)[number];
-export type MetalQuote = { key: MetalKey; price: number };
+
+/** Единица измерения цены: тройская унция (драгметаллы) или метрическая тонна (промышленные). */
+export type MetalUnit = 'toz' | 'mt';
+
+export type MetalQuote = { key: MetalKey; price: number; unit: MetalUnit };
 
 export type MetalsData =
   | { available: false }
   | {
       available: true;
       currency: string;
-      unit: string;
       timestamp: string;
       metals: MetalQuote[];
     };
+
+/** Тройских унций в метрической тонне: 1 000 000 г / 31,1034768 г. */
+const TOZ_PER_TONNE = 32150.7466;
+
+/**
+ * Биржевая единица котировки по металлу. metals.dev отдаёт всё в запрошенной
+ * единице (у нас toz), но рынок котирует драгметаллы за унцию, а промышленные
+ * металлы (LME) — за метрическую тонну. Цена меди «0,46 USD» за унцию
+ * бессмысленна для клиента, поэтому промышленные металлы пересчитываем.
+ */
+const UNIT_BY_METAL: Record<MetalKey, MetalUnit> = {
+  gold: 'toz',
+  silver: 'toz',
+  copper: 'mt',
+  zinc: 'mt',
+  aluminum: 'mt',
+};
+
+/**
+ * Приводит цену из тройских унций к биржевой единице металла.
+ * Дополнительных обращений к API не требует — пересчёт чисто арифметический.
+ */
+function toMarketUnit(pricePerToz: number, unit: MetalUnit): number {
+  // Тонна: округляем до целых долларов — дробные центы на таком масштабе шум.
+  return unit === 'mt' ? Math.round(pricePerToz * TOZ_PER_TONNE) : pricePerToz;
+}
 
 // Кеш на 12 часов: ~60 обращений к источнику в месяц — укладывается в бесплатный тариф metals.dev (100/мес).
 const REVALIDATE_SECONDS = 12 * 60 * 60;
@@ -22,6 +51,9 @@ const REVALIDATE_SECONDS = 12 * 60 * 60;
  * Fetch кешируется Next на 12 часов (ISR), поэтому цены попадают в первый же
  * HTML-кадр без клиентского запроса и сдвига вёрстки. Без METALS_API_KEY
  * возвращает {available:false} — полоса просто не рендерится.
+ *
+ * Запрос всегда один и тот же (unit=toz); промышленные металлы приводятся
+ * к цене за тонну арифметически, без дополнительных обращений к API.
  */
 export async function getMetals(): Promise<MetalsData> {
   const apiKey = process.env.METALS_API_KEY;
@@ -45,14 +77,16 @@ export async function getMetals(): Promise<MetalsData> {
 
     const body = data as {
       currency?: string;
-      unit?: string;
       timestamp?: string;
       metals?: Record<string, number>;
     };
 
     const source = body.metals ?? {};
     const metals: MetalQuote[] = METAL_KEYS.filter((key) => typeof source[key] === 'number').map(
-      (key) => ({ key, price: source[key] as number }),
+      (key) => {
+        const unit = UNIT_BY_METAL[key];
+        return { key, unit, price: toMarketUnit(source[key] as number, unit) };
+      },
     );
 
     if (metals.length === 0) {
@@ -62,7 +96,6 @@ export async function getMetals(): Promise<MetalsData> {
     return {
       available: true,
       currency: body.currency ?? 'USD',
-      unit: body.unit ?? 'toz',
       timestamp: body.timestamp ?? new Date().toISOString(),
       metals,
     };

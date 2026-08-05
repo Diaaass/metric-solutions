@@ -269,6 +269,10 @@ const kz: Translation = {
       zinc: 'Мырыш',
       aluminum: 'Алюминий',
     },
+    units: {
+      toz: '$/oz',
+      mt: '$/т',
+    },
   },
 
   seo: {

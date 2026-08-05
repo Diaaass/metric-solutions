@@ -269,6 +269,10 @@ const ru: Translation = {
       zinc: 'Цинк',
       aluminum: 'Алюминий',
     },
+    units: {
+      toz: '$/oz',
+      mt: '$/т',
+    },
   },
 
   seo: {

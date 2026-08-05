@@ -167,6 +167,13 @@ export interface Translation {
       zinc: string;
       aluminum: string;
     };
+    /** Подписи единиц измерения цены рядом с числом */
+    units: {
+      /** Тройская унция — драгметаллы (Au, Ag) */
+      toz: string;
+      /** Метрическая тонна — промышленные металлы (Cu, Zn, Al) */
+      mt: string;
+    };
   };
 
   /** Плавающая кнопка WhatsApp в нижнем левом углу */
