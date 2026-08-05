@@ -37,18 +37,23 @@ export default function TickerBar({
 
   return (
     <div
-      className="border-b border-white/5 bg-ink-900/95"
+      className="relative border-b border-white/5 bg-ink-900/95"
       aria-label={t.eyebrow}
       title={t.disclaimer}
     >
-      {/* Одна строка; на узких экранах — горизонтальная прокрутка внутри полосы.
+      {/* От md — одна строка, как раньше (628 px котировок помещаются в 768 px).
+          Уже md строка переносится: пять металлов в 375 px не влезают, и раньше
+          Zn с Al просто уходили за край при скрытом скроллбаре — это и выглядело
+          как «срезанная» вёрстка. Перенос ничего не прячет.
           relative обязателен: иначе абсолютные .sr-only не обрезаются контейнером
           и растягивают горизонтальный скролл всей страницы. */}
-      <div className="relative mx-auto flex h-10 max-w-7xl items-center gap-5 overflow-x-auto whitespace-nowrap px-4 text-xs sm:px-6 lg:px-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="relative mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-0.5 overflow-x-visible whitespace-nowrap px-4 py-2 text-xs sm:px-6 md:h-10 md:flex-nowrap md:gap-5 md:overflow-x-auto md:py-0 lg:px-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {data.metals.map((m, i) => (
           <React.Fragment key={m.key}>
+            {/* Точка-разделитель только в одну строку; при переносе её роль
+                  играет сам перенос, а на краю строки она смотрелась бы мусором. */}
             {i > 0 && (
-              <span className="text-white/20" aria-hidden="true">
+              <span className="hidden text-white/20 md:inline" aria-hidden="true">
                 ·
               </span>
             )}
