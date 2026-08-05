@@ -70,9 +70,11 @@ export default function ServicesPreview({
                     {banner.subtitle}
                   </p>
                 </div>
+                {/* py-3, а не py-2.5: при 14px тексте это даёт ровно 44px высоты —
+                    минимальный тап-таргет. С py-2.5 кнопка была 40px. */}
                 <Link
                   href={`${base}/contacts`}
-                  className="inline-flex items-center justify-center rounded-[30px] bg-blue-grad px-8 py-2.5 text-sm font-medium text-white transition-all hover:brightness-110 flex-shrink-0"
+                  className="inline-flex items-center justify-center rounded-[30px] bg-blue-grad px-8 py-3 text-sm font-medium text-white transition-all hover:brightness-110 flex-shrink-0"
                 >
                   {banner.btn}
                 </Link>

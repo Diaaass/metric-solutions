@@ -46,8 +46,15 @@ type Payload = {
   website?: string;
 };
 
-function validate(body: unknown): { ok: true; data: Payload } | { ok: false; error: string } {
-  if (!body || typeof body !== 'object') return { ok: false, error: 'Некорректный запрос' };
+/**
+ * Машинный код ошибки. Текст для пользователя маршрут не выбирает: он не знает
+ * языка страницы, а зашитые здесь русские строки показывались бы и на /kz.
+ * Локализация — в словарях (form.errors), сопоставление по коду — на клиенте.
+ */
+type ErrorCode = 'request' | 'required' | 'email' | 'phone' | 'rate' | 'send' | 'spam';
+
+function validate(body: unknown): { ok: true; data: Payload } | { ok: false; code: ErrorCode } {
+  if (!body || typeof body !== 'object') return { ok: false, code: 'request' };
   const b = body as Record<string, unknown>;
 
   const str = (v: unknown, max: number) =>
@@ -60,22 +67,20 @@ function validate(body: unknown): { ok: true; data: Payload } | { ok: false; err
   const message = str(b.message, 5000);
   const website = typeof b.website === 'string' ? b.website : '';
 
-  if (!name || !email || !phone || !message)
-    return { ok: false, error: 'Заполните обязательные поля' };
-  if (!EMAIL_RE.test(email)) return { ok: false, error: 'Некорректный email' };
-  if (!PHONE_DIGITS_RE.test(phone.replace(/\D/g, '')))
-    return { ok: false, error: 'Некорректный телефон' };
-  if (website) return { ok: false, error: 'spam' };
+  if (!name || !email || !phone || !message) return { ok: false, code: 'required' };
+  if (!EMAIL_RE.test(email)) return { ok: false, code: 'email' };
+  if (!PHONE_DIGITS_RE.test(phone.replace(/\D/g, ''))) return { ok: false, code: 'phone' };
+  if (website) return { ok: false, code: 'spam' };
 
   // Метку ставит наш же клиент при монтировании формы, поэтому её отсутствие
   // или мусор в ней означают, что POST пришёл мимо формы — то есть от бота.
   const renderedAt = Number(b.renderedAt);
-  if (!Number.isFinite(renderedAt) || renderedAt <= 0) return { ok: false, error: 'spam' };
+  if (!Number.isFinite(renderedAt) || renderedAt <= 0) return { ok: false, code: 'spam' };
 
   // Отрицательное значение — часы клиента спешат относительно серверных;
   // это не повод терять заявку, поэтому такой случай пропускаем.
   const elapsed = Date.now() - renderedAt;
-  if (elapsed >= 0 && elapsed < MIN_FILL_MS) return { ok: false, error: 'spam' };
+  if (elapsed >= 0 && elapsed < MIN_FILL_MS) return { ok: false, code: 'spam' };
 
   return { ok: true, data: { name, email, phone, company, message, website } };
 }
@@ -87,25 +92,20 @@ export async function POST(req: Request) {
     'unknown';
 
   if (!rateLimit(ip)) {
-    return NextResponse.json(
-      { error: 'Слишком много запросов. Попробуйте позже.' },
-      { status: 429 },
-    );
+    return NextResponse.json({ code: 'rate' }, { status: 429 });
   }
 
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Некорректный JSON' }, { status: 400 });
+    return NextResponse.json({ code: 'request' }, { status: 400 });
   }
 
   const result = validate(body);
   if (!result.ok) {
-    return NextResponse.json(
-      { error: result.error },
-      { status: result.error === 'spam' ? 200 : 400 },
-    );
+    // spam отдаём как 200: бот не должен понимать, на чём его отсекли.
+    return NextResponse.json({ code: result.code }, { status: result.code === 'spam' ? 200 : 400 });
   }
   const { name, email, phone, company, message } = result.data;
 
@@ -165,6 +165,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[contact] sendMail failed', err);
-    return NextResponse.json({ error: 'Ошибка отправки. Попробуйте позже.' }, { status: 500 });
+    return NextResponse.json({ code: 'send' }, { status: 500 });
   }
 }

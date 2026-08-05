@@ -7,6 +7,11 @@ const ru: Translation = {
     services: 'Направления',
     solutions: 'Решения',
     contacts: 'Контакты',
+    homeAriaLabel: 'Metric Solutions — на главную',
+    primaryNavLabel: 'Основная навигация',
+    mobileNavLabel: 'Мобильная навигация',
+    openMenu: 'Открыть меню',
+    closeMenu: 'Закрыть меню',
   },
 
   hero: {
@@ -268,6 +273,14 @@ const ru: Translation = {
     errorConn: 'Не удалось отправить заявку. Проверьте соединение.',
     errorPhone: 'Введите номер в формате +7 (XXX) XXX XXXX',
     privacyNote: 'Нажимая кнопку, вы соглашаетесь с политикой конфиденциальности',
+    errors: {
+      request: 'Некорректный запрос. Обновите страницу и попробуйте снова.',
+      required: 'Заполните обязательные поля',
+      email: 'Некорректный email',
+      phone: 'Некорректный телефон',
+      rate: 'Слишком много запросов. Попробуйте позже.',
+      send: 'Ошибка отправки. Попробуйте позже.',
+    },
   },
 
   metals: {

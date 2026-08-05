@@ -10,6 +10,16 @@ export interface Translation {
     services: string;
     solutions: string;
     contacts: string;
+    /** aria-label логотипа-ссылки в шапке */
+    homeAriaLabel: string;
+    /** aria-label основной навигации (десктоп) */
+    primaryNavLabel: string;
+    /** aria-label мобильной навигации */
+    mobileNavLabel: string;
+    /** aria-label бургера в закрытом состоянии */
+    openMenu: string;
+    /** aria-label бургера в открытом состоянии */
+    closeMenu: string;
   };
 
   hero: {
@@ -147,6 +157,25 @@ export interface Translation {
     errorConn: string;
     errorPhone: string;
     privacyNote: string;
+    /**
+     * Ошибки, пришедшие с сервера. /api/contact отдаёт машинный код, а текст
+     * берётся отсюда: иначе на казахской странице показывались бы русские
+     * сообщения, зашитые в маршрут.
+     */
+    errors: {
+      /** Тело запроса не разобрано */
+      request: string;
+      /** Не заполнены обязательные поля */
+      required: string;
+      /** Некорректный email */
+      email: string;
+      /** Некорректный телефон */
+      phone: string;
+      /** Слишком много запросов с одного IP */
+      rate: string;
+      /** Письмо не ушло (SMTP) */
+      send: string;
+    };
   };
 
   /** Полоса котировок над шапкой (TickerBar): подписи для screen reader и tooltip */

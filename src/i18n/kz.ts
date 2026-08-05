@@ -7,6 +7,11 @@ const kz: Translation = {
     services: 'Бағыттар',
     solutions: 'Шешімдер',
     contacts: 'Байланыс',
+    homeAriaLabel: 'Metric Solutions — басты бетке',
+    primaryNavLabel: 'Негізгі навигация',
+    mobileNavLabel: 'Мобильді навигация',
+    openMenu: 'Мәзірді ашу',
+    closeMenu: 'Мәзірді жабу',
   },
 
   hero: {
@@ -268,6 +273,14 @@ const kz: Translation = {
     errorConn: 'Өтінімді жіберу мүмкін болмады. Байланысты тексеріңіз.',
     errorPhone: 'Нөмірді +7 (XXX) XXX XXXX форматында енгізіңіз',
     privacyNote: 'Түймені басу арқылы сіз құпиялылық саясатымен келісесіз',
+    errors: {
+      request: 'Сұрау дұрыс емес. Бетті жаңартып, қайталап көріңіз.',
+      required: 'Міндетті өрістерді толтырыңыз',
+      email: 'Email дұрыс емес',
+      phone: 'Телефон нөмірі дұрыс емес',
+      rate: 'Сұраулар тым көп. Кейінірек қайталап көріңіз.',
+      send: 'Жіберу қатесі. Кейінірек қайталап көріңіз.',
+    },
   },
 
   metals: {

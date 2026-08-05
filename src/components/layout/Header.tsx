@@ -46,11 +46,7 @@ export default function Header({ nav, lang }: { nav: Translation['nav']; lang: L
     <header className="sticky top-0 z-50 border-b border-white/5 bg-ink-950/85 backdrop-blur-md">
       <Container>
         <div className="flex items-center justify-between h-[72px]">
-          <Link
-            href={base || '/'}
-            className="flex items-center"
-            aria-label="Metric Solutions — на главную"
-          >
+          <Link href={base || '/'} className="flex items-center" aria-label={nav.homeAriaLabel}>
             <Image
               src="/logo-figma.svg"
               alt="Metric Solutions"
@@ -61,7 +57,7 @@ export default function Header({ nav, lang }: { nav: Translation['nav']; lang: L
             />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-10" aria-label="Основная навигация">
+          <nav className="hidden md:flex items-center gap-10" aria-label={nav.primaryNavLabel}>
             {routes.map((item) => {
               const active = isActive(item.path);
               return (
@@ -99,7 +95,7 @@ export default function Header({ nav, lang }: { nav: Translation['nav']; lang: L
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="md:hidden p-2.5 rounded-lg text-white hover:bg-white/10"
-            aria-label={isMenuOpen ? 'Закрыть меню' : 'Открыть меню'}
+            aria-label={isMenuOpen ? nav.closeMenu : nav.openMenu}
             aria-expanded={isMenuOpen}
           >
             {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -107,7 +103,7 @@ export default function Header({ nav, lang }: { nav: Translation['nav']; lang: L
         </div>
 
         {isMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-white/10" aria-label="Мобильная навигация">
+          <nav className="md:hidden py-4 border-t border-white/10" aria-label={nav.mobileNavLabel}>
             {routes.map((item) => {
               const active = isActive(item.path);
               return (

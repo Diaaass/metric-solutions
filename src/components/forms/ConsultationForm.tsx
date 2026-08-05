@@ -99,7 +99,10 @@ export default function ConsultationForm({ t }: { t: Translation['form'] }) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || t.errorConn);
+        // Сервер отдаёт машинный код, а не готовый текст: языка страницы он
+        // не знает. Незнакомый код — общая ошибка соединения.
+        const code = typeof data?.code === 'string' ? data.code : '';
+        setError(t.errors[code as keyof typeof t.errors] ?? t.errorConn);
         return;
       }
 
