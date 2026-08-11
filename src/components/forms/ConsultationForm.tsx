@@ -247,6 +247,7 @@ export default function ConsultationForm({ t }: { t: Translation['form'] }) {
             id="message"
             name="message"
             rows={4}
+            maxLength={5000}
             placeholder={t.messagePlaceholder}
             value={formData.message}
             onChange={handleChange}
