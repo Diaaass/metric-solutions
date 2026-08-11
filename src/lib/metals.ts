@@ -43,12 +43,32 @@ function toMarketUnit(pricePerToz: number, unit: MetalUnit): number {
   return unit === 'mt' ? Math.round(pricePerToz * TOZ_PER_TONNE) : pricePerToz;
 }
 
-// Кеш на 12 часов: ~60 обращений к источнику в месяц — укладывается в бесплатный тариф metals.dev (100/мес).
-const REVALIDATE_SECONDS = 12 * 60 * 60;
+// Кеш на 24 часа: ~30 обращений к источнику в месяц + сборки — с запасом
+// укладывается в бесплатный тариф metals.dev (100/мес).
+const REVALIDATE_SECONDS = 24 * 60 * 60;
+
+/**
+ * Фиксированные цены для локальной разработки. Дев-сервер и сборки не должны
+ * жечь месячную квоту metals.dev (именно так она и была исчерпана): каждый
+ * перезапуск `next dev` сбрасывает кеш fetch и делает новый запрос.
+ * Живые данные локально — METALS_LIVE=1 в .env.local.
+ */
+const DEV_MOCK: MetalsData = {
+  available: true,
+  currency: 'USD',
+  timestamp: '2026-01-01T00:00:00Z',
+  metals: [
+    { key: 'gold', unit: 'toz', price: 4235.5 },
+    { key: 'silver', unit: 'toz', price: 52.4 },
+    { key: 'copper', unit: 'mt', price: 14850 },
+    { key: 'zinc', unit: 'mt', price: 2860 },
+    { key: 'aluminum', unit: 'mt', price: 2540 },
+  ],
+};
 
 /**
  * Котировки metals.dev для серверного рендера (тикер в layout).
- * Fetch кешируется Next на 12 часов (ISR), поэтому цены попадают в первый же
+ * Fetch кешируется Next на 24 часа (ISR), поэтому цены попадают в первый же
  * HTML-кадр без клиентского запроса и сдвига вёрстки. Без METALS_API_KEY
  * возвращает {available:false} — полоса просто не рендерится.
  *
@@ -60,6 +80,11 @@ export async function getMetals(): Promise<MetalsData> {
 
   if (!apiKey) {
     return { available: false };
+  }
+
+  // В dev по умолчанию мок: квота API — только для прода (или METALS_LIVE=1).
+  if (process.env.NODE_ENV === 'development' && process.env.METALS_LIVE !== '1') {
+    return DEV_MOCK;
   }
 
   try {
@@ -76,10 +101,17 @@ export async function getMetals(): Promise<MetalsData> {
     }
 
     const body = data as {
+      status?: string;
       currency?: string;
       timestamp?: string;
       metals?: Record<string, number>;
     };
+
+    // metals.dev отдаёт ошибки (исчерпанная квота, неверный ключ) телом с
+    // HTTP 200 — надёжный признак успеха только body.status === 'success'.
+    if (body.status !== 'success') {
+      return { available: false };
+    }
 
     const source = body.metals ?? {};
     const metals: MetalQuote[] = METAL_KEYS.filter((key) => typeof source[key] === 'number').map(
