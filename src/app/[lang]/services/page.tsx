@@ -20,7 +20,7 @@ export default function ServicesPage({ params }: Props) {
   const lang = params.lang;
   const t = translations[lang].servicesPage;
   const detail = translations[lang].serviceDetail;
-  const base = lang === 'kz' ? '/kz' : '';
+  const base = lang === 'en' ? '/en' : '';
 
   return (
     <div className="relative overflow-hidden bg-ink-950">

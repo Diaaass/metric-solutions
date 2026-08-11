@@ -16,9 +16,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return routes.flatMap((path) => {
     const ruUrl = `${BASE_URL}${path}`;
-    const kzUrl = `${BASE_URL}/kz${path}`;
+    const enUrl = `${BASE_URL}/en${path}`;
     const priority = path === '' ? 1 : 0.7;
-    const languages = { ru: ruUrl, kk: kzUrl, 'x-default': ruUrl };
+    const languages = { ru: ruUrl, en: enUrl, 'x-default': ruUrl };
 
     return [
       {
@@ -29,7 +29,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         alternates: { languages },
       },
       {
-        url: kzUrl,
+        url: enUrl,
         lastModified: now,
         changeFrequency: 'monthly' as const,
         priority,

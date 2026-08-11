@@ -3,26 +3,58 @@ import nodemailer from 'nodemailer';
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 3;
+// Порог, после которого лениво выметаем из карты IP с истёкшими метками:
+// иначе на долгоживущем сервере (npm start) карта росла бы бесконечно.
+const RATE_LIMIT_SWEEP_SIZE = 500;
 const ipHits = new Map<string, number[]>();
 
 /**
- * Минимальное время «человеческого» заполнения формы. Счётчик частоты выше
- * живёт в памяти процесса и на serverless почти бесполезен (у каждого инстанса
- * своя карта), а эта проверка не хранит состояние вообще: клиент кладёт в форму
- * метку времени показа, сервер смотрит, сколько прошло до отправки.
+ * Минимальное время «человеческого» заполнения формы. Заполнение быстрее —
+ * мягкий сигнал спама: письмо всё равно уходит, но с пометкой в теме.
+ * Жёсткие сигналы (honeypot, отсутствие метки renderedAt) режутся молча —
+ * реальный пользователь их не задевает, т.к. метку ставит наш же клиент.
  */
 const MIN_FILL_MS = 3000;
 
-function rateLimit(ip: string): boolean {
+/** Максимальный размер тела запроса: легитимная заявка сильно меньше. */
+const MAX_BODY_BYTES = 32_768;
+
+const MAX_MESSAGE_LENGTH = 5000;
+
+function pruneHits(hits: number[], now: number): number[] {
+  return hits.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+}
+
+/** Проверка лимита без учёта запроса: считаем только принятые заявки (recordHit). */
+function isRateLimited(ip: string): boolean {
   const now = Date.now();
-  const hits = (ipHits.get(ip) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  if (hits.length >= RATE_LIMIT_MAX) {
-    ipHits.set(ip, hits);
+
+  // Ленивая уборка: не даём карте расти на долгоживущем процессе.
+  // (forEach вместо for...of: target TS ниже es2015 не итерирует Map;
+  // удаление во время forEach по спецификации Map безопасно.)
+  if (ipHits.size > RATE_LIMIT_SWEEP_SIZE) {
+    ipHits.forEach((hits, key) => {
+      const alive = pruneHits(hits, now);
+      if (alive.length === 0) ipHits.delete(key);
+      else ipHits.set(key, alive);
+    });
+  }
+
+  const alive = pruneHits(ipHits.get(ip) ?? [], now);
+  if (alive.length === 0) {
+    ipHits.delete(ip);
     return false;
   }
+  ipHits.set(ip, alive);
+  return alive.length >= RATE_LIMIT_MAX;
+}
+
+/** Записываем попытку только для прошедших валидацию заявок: опечатки не блокируют. */
+function recordHit(ip: string): void {
+  const now = Date.now();
+  const hits = pruneHits(ipHits.get(ip) ?? [], now);
   hits.push(now);
   ipHits.set(ip, hits);
-  return true;
 }
 
 function escapeHtml(s: string): string {
@@ -43,46 +75,73 @@ type Payload = {
   phone: string;
   company: string;
   message: string;
-  website?: string;
 };
 
 /**
  * Машинный код ошибки. Текст для пользователя маршрут не выбирает: он не знает
- * языка страницы, а зашитые здесь русские строки показывались бы и на /kz.
+ * языка страницы, а зашитые здесь русские строки показывались бы и на /en.
  * Локализация — в словарях (form.errors), сопоставление по коду — на клиенте.
  */
-type ErrorCode = 'request' | 'required' | 'email' | 'phone' | 'rate' | 'send' | 'spam';
+type ErrorCode = 'request' | 'required' | 'email' | 'phone' | 'long' | 'rate' | 'send' | 'spam';
 
-function validate(body: unknown): { ok: true; data: Payload } | { ok: false; code: ErrorCode } {
+type ValidationResult =
+  | { ok: true; data: Payload; suspicious: boolean }
+  | { ok: false; code: ErrorCode };
+
+function validate(body: unknown): ValidationResult {
   if (!body || typeof body !== 'object') return { ok: false, code: 'request' };
   const b = body as Record<string, unknown>;
 
-  const str = (v: unknown, max: number) =>
-    typeof v === 'string' && v.length <= max ? v.trim() : null;
+  // Однострочные поля: режем control-символы (в т.ч. переводы строк) — защита
+  // от инъекции заголовков письма и мусора в теме.
+  const line = (v: unknown, max: number) =>
+    typeof v === 'string' && v.length <= max
+      ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim()
+      : null;
 
-  const name = str(b.name, 100);
-  const email = str(b.email, 200);
-  const phone = str(b.phone ?? '', 50) ?? '';
-  const company = str(b.company ?? '', 200) ?? '';
-  const message = str(b.message, 5000);
+  // Сообщение: переводы строк легитимны (pre-wrap в письме), остальное режем.
+  const rawMessage = typeof b.message === 'string' ? b.message : null;
+  const message =
+    rawMessage === null
+      ? null
+      : rawMessage
+          .replace(/\r\n?/g, '\n')
+          .replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ')
+          .trim();
+
+  const name = line(b.name, 100);
+  const email = line(b.email, 200);
+  const phone = line(b.phone ?? '', 50) ?? '';
+  const company = line(b.company ?? '', 200) ?? '';
   const website = typeof b.website === 'string' ? b.website : '';
 
-  if (!name || !email || !phone || !message) return { ok: false, code: 'required' };
+  if (!name || !email || !phone || message === null || message === '') {
+    // Слишком длинное сообщение — отдельный код: «заполните обязательные поля»
+    // на заполненную форму сбивает с толку.
+    if (typeof b.message === 'string' && b.message.length > MAX_MESSAGE_LENGTH)
+      return { ok: false, code: 'long' };
+    return { ok: false, code: 'required' };
+  }
+  if (message.length > MAX_MESSAGE_LENGTH) return { ok: false, code: 'long' };
   if (!EMAIL_RE.test(email)) return { ok: false, code: 'email' };
   if (!PHONE_DIGITS_RE.test(phone.replace(/\D/g, ''))) return { ok: false, code: 'phone' };
+
+  // Жёсткий сигнал: honeypot заполняют только боты (поле скрыто от людей).
   if (website) return { ok: false, code: 'spam' };
 
-  // Метку ставит наш же клиент при монтировании формы, поэтому её отсутствие
-  // или мусор в ней означают, что POST пришёл мимо формы — то есть от бота.
+  // Жёсткий сигнал: метку ставит наш же клиент при монтировании формы, поэтому
+  // её отсутствие или мусор в ней означают POST мимо формы — то есть бота.
   const renderedAt = Number(b.renderedAt);
   if (!Number.isFinite(renderedAt) || renderedAt <= 0) return { ok: false, code: 'spam' };
 
-  // Отрицательное значение — часы клиента спешат относительно серверных;
-  // это не повод терять заявку, поэтому такой случай пропускаем.
+  // Мягкий сигнал: форма заполнена подозрительно быстро. Реальный человек с
+  // автозаполнением браузера способен уложиться в 3 секунды, поэтому заявку
+  // не теряем — отправляем с пометкой. Отрицательный elapsed (часы клиента
+  // спешат) тоже не повод терять заявку.
   const elapsed = Date.now() - renderedAt;
-  if (elapsed >= 0 && elapsed < MIN_FILL_MS) return { ok: false, code: 'spam' };
+  const suspicious = elapsed >= 0 && elapsed < MIN_FILL_MS;
 
-  return { ok: true, data: { name, email, phone, company, message, website } };
+  return { ok: true, data: { name, email, phone, company, message }, suspicious };
 }
 
 export async function POST(req: Request) {
@@ -91,8 +150,14 @@ export async function POST(req: Request) {
     req.headers.get('x-real-ip') ||
     'unknown';
 
-  if (!rateLimit(ip)) {
+  if (isRateLimited(ip)) {
     return NextResponse.json({ code: 'rate' }, { status: 429 });
+  }
+
+  // Отсекаем заведомо раздутые тела до парсинга JSON.
+  const contentLength = Number(req.headers.get('content-length') ?? 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ code: 'request' }, { status: 413 });
   }
 
   let body: unknown;
@@ -109,6 +174,10 @@ export async function POST(req: Request) {
   }
   const { name, email, phone, company, message } = result.data;
 
+  // Лимит частоты считает только валидные заявки: три опечатки подряд
+  // не блокируют пользователя на минуту.
+  recordHit(ip);
+
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -122,6 +191,15 @@ export async function POST(req: Request) {
   const safePhone = escapeHtml(phone || '—');
   const safeCompany = escapeHtml(company || '—');
   const safeMessage = escapeHtml(message);
+
+  // Мягкий спам-сигнал помечаем в теме и в теле: получатель видит контекст,
+  // а фильтр почты может отсортировать по префиксу.
+  const subjectPrefix = result.suspicious ? '[Возможен спам] ' : '';
+  const suspicionNote = result.suspicious
+    ? `<p style="margin: 16px 0 0; padding: 10px 12px; background: #fef3c7; border-left: 4px solid #d97706; border-radius: 4px; color: #92400e;">
+        Форма заполнена быстрее 3 секунд — возможна автоматическая отправка.
+      </p>`
+    : '';
 
   const html = `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -150,6 +228,7 @@ export async function POST(req: Request) {
         <p style="color: #64748b; margin: 0 0 8px;">Сообщение</p>
         <p style="margin: 0; white-space: pre-wrap;">${safeMessage}</p>
       </div>
+      ${suspicionNote}
     </div>
   `;
 
@@ -158,7 +237,7 @@ export async function POST(req: Request) {
       from: `"Metric Solution" <${process.env.GMAIL_USER}>`,
       to: process.env.GMAIL_USER,
       replyTo: email,
-      subject: `Заявка от ${name}`,
+      subject: `${subjectPrefix}Заявка от ${name}`,
       html,
     });
 

@@ -18,7 +18,7 @@ export default function Home({ params }: Props) {
   if (!isLang(params.lang)) notFound();
   const lang = params.lang;
   const t = translations[lang];
-  const base = lang === 'kz' ? '/kz' : '';
+  const base = lang === 'en' ? '/en' : '';
 
   return (
     <>

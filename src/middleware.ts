@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 /**
  * Локальная маршрутизация без смены URL в адресной строке:
- * - /kz и /kz/... проходят напрямую (казахская версия);
+ * - /en и /en/... проходят напрямую (английская версия);
  * - всё остальное внутренне REWRITE-ится на /ru/... (русская версия остаётся на корне).
  *
  * Исключения (не обрабатываются): /api, /_next, файлы с расширением,
@@ -12,8 +12,8 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Казахская версия уже с префиксом — пропускаем как есть.
-  if (pathname === '/kz' || pathname.startsWith('/kz/')) {
+  // Английская версия уже с префиксом — пропускаем как есть.
+  if (pathname === '/en' || pathname.startsWith('/en/')) {
     return NextResponse.next();
   }
 

@@ -44,7 +44,7 @@ export default function ServiceDetailPage({ params }: Props) {
   const lang = params.lang;
   const slug = params.slug;
   const t = translations[lang];
-  const base = lang === 'kz' ? '/kz' : '';
+  const base = lang === 'en' ? '/en' : '';
 
   const detail = t.serviceDetail.items[slug];
   const card = t.servicesPage.items.find((item) => item.slug === slug);
