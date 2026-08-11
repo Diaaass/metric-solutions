@@ -11,6 +11,20 @@ const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 type Mode = 'hidden' | 'static' | 'video';
 
 /**
+ * Подписка на MediaQueryList с фолбэком для старых Safari (≤13), где нет
+ * addEventListener — только устаревший addListener. Без фолбэка эффект
+ * кидал бы TypeError и ронял весь клиентский рендер.
+ */
+function subscribeMedia(mql: MediaQueryList, onChange: () => void): () => void {
+  if (typeof mql.addEventListener === 'function') {
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }
+  mql.addListener(onChange);
+  return () => mql.removeListener(onChange);
+}
+
+/**
  * Правая часть hero: анимация появления логотипа (2 с, проигрывается один раз
  * и замирает на финальном кадре).
  *
@@ -38,21 +52,21 @@ export default function HeroVisual() {
     };
     update();
 
-    desktop.addEventListener('change', update);
-    reduced.addEventListener('change', update);
+    const unsubscribeDesktop = subscribeMedia(desktop, update);
+    const unsubscribeReduced = subscribeMedia(reduced, update);
     return () => {
-      desktop.removeEventListener('change', update);
-      reduced.removeEventListener('change', update);
+      unsubscribeDesktop();
+      unsubscribeReduced();
     };
   }, []);
 
   // Подстраховка автоплея: элемент монтируется после гидрации, и в отдельных
-  // окружениях атрибут autoPlay к этому моменту уже не срабатывает.
+  // окружениях атрибут autoPlay к этому моменту уже не срабатывает. Если
+  // воспроизведение запрещено совсем (iOS Low Power Mode, строгие настройки) —
+  // показываем статичный логотип, а не замерший первый кадр ролика.
   useEffect(() => {
     if (mode !== 'video') return;
-    videoRef.current?.play().catch(() => {
-      /* автоплей запрещён — останется первый кадр (цельный камень) */
-    });
+    videoRef.current?.play().catch(() => setMode('static'));
   }, [mode]);
 
   if (mode === 'hidden') return null;
@@ -65,7 +79,7 @@ export default function HeroVisual() {
         width={120}
         height={170}
         priority
-        className="relative h-auto w-full drop-shadow-[0_0_70px_rgba(0,136,255,0.45)]"
+        className="relative h-auto w-full max-w-[560px] drop-shadow-[0_0_70px_rgba(0,136,255,0.45)]"
       />
     );
   }

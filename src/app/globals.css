@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    /* Фон за пределами контента: при overscroll-резинке (и до загрузки CSS-фона
+       body) Chrome показывает собственный дефолт — в тёмной теме почти чёрную
+       полосу по краю страницы. color-scheme красит и нативные скроллбары. */
+    @apply bg-ink-950;
+    color-scheme: dark;
+  }
+
   body {
     @apply bg-ink-950 text-white font-sans antialiased;
   }

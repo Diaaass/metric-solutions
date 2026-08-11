@@ -48,12 +48,16 @@ function toMarketUnit(pricePerToz: number, unit: MetalUnit): number {
 const REVALIDATE_SECONDS = 24 * 60 * 60;
 
 /**
- * Фиксированные цены для локальной разработки. Дев-сервер и сборки не должны
- * жечь месячную квоту metals.dev (именно так она и была исчерпана): каждый
- * перезапуск `next dev` сбрасывает кеш fetch и делает новый запрос.
- * Живые данные локально — METALS_LIVE=1 в .env.local.
+ * Фиксированные цены-заглушки. Используются:
+ * - в dev по умолчанию — дев-сервер и сборки не должны жечь месячную квоту
+ *   metals.dev (именно так она и была исчерпана: каждый перезапуск `next dev`
+ *   сбрасывает кеш fetch); живые данные локально — METALS_LIVE=1;
+ * - на проде как фолбэк при недоступном API (исчерпанная квота, нет ключа,
+ *   сбой сети) — полоса котировок не должна исчезать со страницы; данные и так
+ *   помечены дисклеймером «справочный характер». Когда API оживает, живые цены
+ *   возвращаются сами (кеш fetch — сутки).
  */
-const DEV_MOCK: MetalsData = {
+const FALLBACK_DATA: MetalsData = {
   available: true,
   currency: 'USD',
   timestamp: '2026-01-01T00:00:00Z',
@@ -69,8 +73,10 @@ const DEV_MOCK: MetalsData = {
 /**
  * Котировки metals.dev для серверного рендера (тикер в layout).
  * Fetch кешируется Next на 24 часа (ISR), поэтому цены попадают в первый же
- * HTML-кадр без клиентского запроса и сдвига вёрстки. Без METALS_API_KEY
- * возвращает {available:false} — полоса просто не рендерится.
+ * HTML-кадр без клиентского запроса и сдвига вёрстки.
+ *
+ * Функция всегда возвращает данные: живые при доступном API, иначе
+ * FALLBACK_DATA — полоса котировок никогда не пропадает со страницы.
  *
  * Запрос всегда один и тот же (unit=toz); промышленные металлы приводятся
  * к цене за тонну арифметически, без дополнительных обращений к API.
@@ -78,13 +84,13 @@ const DEV_MOCK: MetalsData = {
 export async function getMetals(): Promise<MetalsData> {
   const apiKey = process.env.METALS_API_KEY;
 
-  if (!apiKey) {
-    return { available: false };
+  // В dev по умолчанию заглушка: квота API — только для прода (или METALS_LIVE=1).
+  if (process.env.NODE_ENV === 'development' && process.env.METALS_LIVE !== '1') {
+    return FALLBACK_DATA;
   }
 
-  // В dev по умолчанию мок: квота API — только для прода (или METALS_LIVE=1).
-  if (process.env.NODE_ENV === 'development' && process.env.METALS_LIVE !== '1') {
-    return DEV_MOCK;
+  if (!apiKey) {
+    return FALLBACK_DATA;
   }
 
   try {
@@ -92,12 +98,12 @@ export async function getMetals(): Promise<MetalsData> {
     const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
 
     if (!res.ok) {
-      return { available: false };
+      return FALLBACK_DATA;
     }
 
     const data: unknown = await res.json();
     if (!data || typeof data !== 'object') {
-      return { available: false };
+      return FALLBACK_DATA;
     }
 
     const body = data as {
@@ -110,7 +116,7 @@ export async function getMetals(): Promise<MetalsData> {
     // metals.dev отдаёт ошибки (исчерпанная квота, неверный ключ) телом с
     // HTTP 200 — надёжный признак успеха только body.status === 'success'.
     if (body.status !== 'success') {
-      return { available: false };
+      return FALLBACK_DATA;
     }
 
     const source = body.metals ?? {};
@@ -122,7 +128,7 @@ export async function getMetals(): Promise<MetalsData> {
     );
 
     if (metals.length === 0) {
-      return { available: false };
+      return FALLBACK_DATA;
     }
 
     return {
@@ -132,6 +138,6 @@ export async function getMetals(): Promise<MetalsData> {
       metals,
     };
   } catch {
-    return { available: false };
+    return FALLBACK_DATA;
   }
 }
