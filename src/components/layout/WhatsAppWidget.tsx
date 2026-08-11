@@ -4,7 +4,8 @@ const WHATSAPP_URL =
   'https://wa.me/77761691840?text=%D0%9F%D1%80%D0%B8%D0%B2%D0%B5%D1%82!%20%F0%9F%91%8B%20%D0%9C%D0%B5%D0%BD%D1%8F%20%D0%B8%D0%BD%D1%82%D0%B5%D1%80%D0%B5%D1%81%D1%83%D0%B5%D1%82...';
 
 /**
- * Круглая плавающая кнопка WhatsApp в нижнем левом углу.
+ * Круглая плавающая кнопка WhatsApp в нижнем правом углу (индустриальный
+ * стандарт; слева она перекрывала начало строк в textarea формы на мобильном).
  * Синий градиент сайта вместо фирменного зелёного, ссылка открывает чат
  * с предзаполненным сообщением в новой вкладке.
  */
@@ -16,7 +17,7 @@ export default function WhatsAppWidget({ ariaLabel }: { ariaLabel: string }) {
       rel="noopener noreferrer"
       aria-label={ariaLabel}
       title={ariaLabel}
-      className="fixed bottom-5 left-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-grad text-white shadow-glow transition-all duration-200 hover:scale-105 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950 md:bottom-6 md:left-6"
+      className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-grad text-white shadow-glow transition-all duration-200 hover:scale-105 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950 md:bottom-6 md:right-6"
     >
       {/* Глиф WhatsApp (телефонная трубка в контуре чата) */}
       <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
