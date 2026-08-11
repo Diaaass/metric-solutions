@@ -41,22 +41,22 @@ export default function TickerBar({
       aria-label={t.eyebrow}
       title={t.disclaimer}
     >
-      {/* От md — одна строка, как раньше (628 px котировок помещаются в 768 px).
+      {/* Контейнер тот же, что у шапки (container-custom: max-w-7xl + те же
+          горизонтальные паддинги), и от md раскладка тоже justify-between —
+          крайние котировки встают ровно под логотипом и переключателем языка.
+          Без этого цены сбивались в левый угол, а справа зияла пустота, из-за
+          чего полоса читалась как не выровненная с навбаром.
           Уже md строка переносится: пять металлов в 375 px не влезают, и раньше
           Zn с Al просто уходили за край при скрытом скроллбаре — это и выглядело
           как «срезанная» вёрстка. Перенос ничего не прячет.
           relative обязателен: иначе абсолютные .sr-only не обрезаются контейнером
           и растягивают горизонтальный скролл всей страницы. */}
-      <div className="relative mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-0.5 overflow-x-visible whitespace-nowrap px-4 py-2 text-xs sm:px-6 md:h-10 md:flex-nowrap md:gap-5 md:overflow-x-auto md:py-0 lg:px-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {data.metals.map((m, i) => (
+      <div className="relative mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-0.5 overflow-x-visible whitespace-nowrap px-4 py-2 text-xs sm:px-6 md:h-10 md:flex-nowrap md:justify-between md:gap-5 md:overflow-x-auto md:py-0 lg:px-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {data.metals.map((m) => (
           <React.Fragment key={m.key}>
-            {/* Точка-разделитель только в одну строку; при переносе её роль
-                  играет сам перенос, а на краю строки она смотрелась бы мусором. */}
-            {i > 0 && (
-              <span className="hidden text-white/20 md:inline" aria-hidden="true">
-                ·
-              </span>
-            )}
+            {/* Разделители не нужны: от md котировки разнесены justify-between,
+                до md — переносом строки. Точка между ними стала бы отдельным
+                flex-элементом и разъехалась бы вместе с ценами. */}
             <span className="flex shrink-0 items-baseline gap-1.5" title={t.names[m.key]}>
               <span
                 className="font-display text-sm font-semibold tracking-wide text-accent-300"
