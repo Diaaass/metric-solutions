@@ -10,8 +10,8 @@ import type { Lang, Translation } from '@/i18n';
 
 /** Убирает языковой префикс из пути, приводя его к «голому» русскому пути (/, /about, …). */
 function stripLocale(pathname: string): string {
-  if (pathname === '/kz' || pathname === '/ru') return '/';
-  if (pathname.startsWith('/kz/') || pathname.startsWith('/ru/')) return pathname.slice(3);
+  if (pathname === '/en' || pathname === '/ru') return '/';
+  if (pathname.startsWith('/en/') || pathname.startsWith('/ru/')) return pathname.slice(3);
   return pathname || '/';
 }
 
@@ -21,7 +21,7 @@ export default function Header({ nav, lang }: { nav: Translation['nav']; lang: L
 
   // «Голый» путь без префикса — общий и для активной ссылки, и для переключателя языка.
   const bare = stripLocale(pathname);
-  const base = lang === 'kz' ? '/kz' : '';
+  const base = lang === 'en' ? '/en' : '';
 
   const routes = [
     { name: nav.home, path: '' },
@@ -36,10 +36,10 @@ export default function Header({ nav, lang }: { nav: Translation['nav']; lang: L
 
   // Переключатель языка: сохраняем текущую страницу, меняя только префикс.
   const ruHref = bare;
-  const kzHref = bare === '/' ? '/kz' : `/kz${bare}`;
+  const enHref = bare === '/' ? '/en' : `/en${bare}`;
   const langLinks: { code: Lang; label: string; href: string }[] = [
     { code: 'ru', label: 'RU', href: ruHref },
-    { code: 'kz', label: 'ҚАЗ', href: kzHref },
+    { code: 'en', label: 'EN', href: enHref },
   ];
 
   return (

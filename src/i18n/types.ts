@@ -1,4 +1,4 @@
-export type Lang = 'ru' | 'kz';
+export type Lang = 'ru' | 'en';
 
 /** Слаги детальных страниц направлений (/services/[slug]). */
 export type ServiceSlug = 'geometallurgy' | 'beneficiation' | 'hydrometallurgy';
@@ -114,7 +114,7 @@ export interface Translation {
     breadcrumb: string;
     heroTitle1: string;
     heroTitle1Accent: string;
-    /** Союз между двумя частями заголовка («и» / «және») */
+    /** Союз между двумя частями заголовка («и» / «and») */
     heroTitleConjunction: string;
     heroTitle2: string;
     heroTitle2Accent: string;
@@ -159,7 +159,7 @@ export interface Translation {
     privacyNote: string;
     /**
      * Ошибки, пришедшие с сервера. /api/contact отдаёт машинный код, а текст
-     * берётся отсюда: иначе на казахской странице показывались бы русские
+     * берётся отсюда: иначе на английской странице показывались бы русские
      * сообщения, зашитые в маршрут.
      */
     errors: {
@@ -175,6 +175,8 @@ export interface Translation {
       rate: string;
       /** Письмо не ушло (SMTP) */
       send: string;
+      /** Сообщение длиннее допустимого лимита */
+      long: string;
     };
   };
 

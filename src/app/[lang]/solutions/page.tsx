@@ -35,7 +35,7 @@ export default function SolutionsPage({ params }: Props) {
   const t = translations[lang].solutionsPage;
   const serviceItems = translations[lang].servicesPage.items;
   const detail = translations[lang].serviceDetail;
-  const base = lang === 'kz' ? '/kz' : '';
+  const base = lang === 'en' ? '/en' : '';
 
   return (
     <div className="relative overflow-hidden bg-ink-950">

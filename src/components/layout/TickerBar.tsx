@@ -28,7 +28,7 @@ export default function TickerBar({
 }) {
   if (!data.available || data.metals.length === 0) return null;
 
-  const locale = langCode === 'kz' ? 'kk-KZ' : 'ru-RU';
+  const locale = langCode === 'en' ? 'en-US' : 'ru-RU';
   // Унция — с центами (Au ≈ 4 235,50), тонна — целыми долларами (Cu ≈ 14 850).
   const priceFmt: Record<MetalUnit, Intl.NumberFormat> = {
     toz: new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),

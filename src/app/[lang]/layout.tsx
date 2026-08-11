@@ -8,7 +8,7 @@ import TickerBar from '@/components/layout/TickerBar';
 import WhatsAppWidget from '@/components/layout/WhatsAppWidget';
 import { translations } from '@/i18n';
 import type { Lang } from '@/i18n';
-import { isLang, SITE_URL } from '@/i18n/seo';
+import { buildOrgJsonLd, isLang, SITE_URL } from '@/i18n/seo';
 import { getMetals } from '@/lib/metals';
 
 // Узкий гротеск-капс с кириллицей — дисплейные заголовки (аналог Bebas Neue из макета)
@@ -40,14 +40,14 @@ export const metadata: Metadata = {
 };
 
 export function generateStaticParams() {
-  return [{ lang: 'ru' }, { lang: 'kz' }];
+  return [{ lang: 'ru' }, { lang: 'en' }];
 }
 
 // Любой язык вне списка выше → 404 (не рендерим динамически).
 export const dynamicParams = false;
 
-// Атрибут <html lang>: kz → kk (ISO 639-1 для казахского), ru → ru.
-const HTML_LANG: Record<Lang, string> = { ru: 'ru', kz: 'kk' };
+// Атрибут <html lang> совпадает с кодом локали в URL.
+const HTML_LANG: Record<Lang, string> = { ru: 'ru', en: 'en' };
 
 export default async function LangLayout({
   children,
@@ -64,8 +64,13 @@ export default async function LangLayout({
   return (
     <html lang={HTML_LANG[lang]}>
       <body className={`${oswald.variable} ${geologica.variable} ${montserrat.variable} font-sans`}>
+        {/* JSON-LD Organization: собирается из констант, ввода пользователя нет */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: buildOrgJsonLd(lang) }}
+        />
         {/* Полоса котировок над шапкой: скроллится вместе со страницей,
-            шапка ниже остаётся sticky. Данные запечены на сервере (кеш 12ч),
+            шапка ниже остаётся sticky. Данные запечены на сервере (кеш 24ч),
             поэтому цены видны с первого кадра; без ключа полоса не рендерится. */}
         <TickerBar t={t.metals} langCode={lang} data={metals} />
         <Header nav={t.nav} lang={lang} />

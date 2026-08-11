@@ -16,7 +16,7 @@ export default function Footer({
   address: string;
   lang: Lang;
 }) {
-  const base = lang === 'kz' ? '/kz' : '';
+  const base = lang === 'en' ? '/en' : '';
 
   const navLinks = [
     { name: nav.about, href: `${base}/about` },
