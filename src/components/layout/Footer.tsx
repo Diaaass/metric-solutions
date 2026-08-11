@@ -34,10 +34,10 @@ export default function Footer({
             {/* Лого + подпись */}
             <div className="flex flex-col items-start gap-4">
               <Image
-                src="/logo-figma.svg"
+                src="/logo.svg"
                 alt="Metric Solutions"
-                width={96}
-                height={99}
+                width={304}
+                height={313}
                 className="h-24 w-auto"
               />
               <p className="font-card text-base font-light text-white">{footer.caption}</p>

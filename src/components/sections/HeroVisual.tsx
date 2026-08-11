@@ -8,7 +8,10 @@ import Image from 'next/image';
 const DESKTOP_QUERY = '(min-width: 1280px)';
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
-type Mode = 'hidden' | 'static' | 'video';
+// Через сколько проверяем, тронулся ли ролик с места (мс).
+const PLAYBACK_CHECK_MS = 900;
+
+type Mode = 'hidden' | 'poster' | 'video';
 
 /**
  * Подписка на MediaQueryList с фолбэком для старых Safari (≤13), где нет
@@ -25,7 +28,7 @@ function subscribeMedia(mql: MediaQueryList, onChange: () => void): () => void {
 }
 
 /**
- * Правая часть hero: анимация появления логотипа (2 с, проигрывается один раз
+ * Правая часть hero: анимация появления кристалла (2 с, проигрывается один раз
  * и замирает на финальном кадре).
  *
  * Ролик — с настоящим альфа-каналом (фон прозрачный, чёрный выключен ещё при
@@ -35,8 +38,9 @@ function subscribeMedia(mql: MediaQueryList, onChange: () => void): () => void {
  *   играют и пропускают первый source);
  * - logo-reveal.mov — HEVC + альфа (Safari выбирает его первым).
  *
- * prefers-reduced-motion — статичный SVG-логотип, как было до анимации.
- * До монтирования (и на SSR) не рендерим ничего: элемент декоративный.
+ * Фолбэк — logo-crystal.png, финальный кадр этого же ролика с альфой. Он
+ * показывается при prefers-reduced-motion и когда автоплей запрещён, поэтому
+ * кристалл в hero виден всегда: отличается только наличие движения.
  */
 export default function HeroVisual() {
   const [mode, setMode] = useState<Mode>('hidden');
@@ -48,7 +52,7 @@ export default function HeroVisual() {
 
     const update = () => {
       if (!desktop.matches) setMode('hidden');
-      else setMode(reduced.matches ? 'static' : 'video');
+      else setMode(reduced.matches ? 'poster' : 'video');
     };
     update();
 
@@ -60,26 +64,37 @@ export default function HeroVisual() {
     };
   }, []);
 
-  // Подстраховка автоплея: элемент монтируется после гидрации, и в отдельных
-  // окружениях атрибут autoPlay к этому моменту уже не срабатывает. Если
-  // воспроизведение запрещено совсем (iOS Low Power Mode, строгие настройки) —
-  // показываем статичный логотип, а не замерший первый кадр ролика.
   useEffect(() => {
     if (mode !== 'video') return;
-    videoRef.current?.play().catch(() => setMode('static'));
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Подстраховка автоплея: элемент монтируется после гидрации, и в отдельных
+    // окружениях атрибут autoPlay к этому моменту уже не срабатывает.
+    // Ошибку промиса намеренно глотаем: браузер отклоняет play() и когда
+    // прерывает собственный автоплей (AbortError) — по ней судить о запрете
+    // нельзя, иначе рабочий ролик подменялся бы картинкой.
+    void video.play().catch(() => {});
+
+    // Судим по факту: если ролик так и не сдвинулся — автоплей запрещён.
+    const timer = setTimeout(() => {
+      if (video.paused && video.currentTime === 0) setMode('poster');
+    }, PLAYBACK_CHECK_MS);
+
+    return () => clearTimeout(timer);
   }, [mode]);
 
   if (mode === 'hidden') return null;
 
-  if (mode === 'static') {
+  if (mode === 'poster') {
     return (
       <Image
-        src="/logo-figma.svg"
+        src="/logo-crystal.png"
         alt=""
-        width={120}
-        height={170}
+        width={720}
+        height={782}
         priority
-        className="relative h-auto w-full max-w-[560px] drop-shadow-[0_0_70px_rgba(0,136,255,0.45)]"
+        className="relative h-auto w-full"
       />
     );
   }
@@ -92,6 +107,7 @@ export default function HeroVisual() {
       muted
       playsInline
       preload="auto"
+      poster="/logo-crystal.png"
       aria-hidden="true"
     >
       {/* Safari: HEVC с альфой; Chrome/Firefox не играют quicktime и идут дальше */}

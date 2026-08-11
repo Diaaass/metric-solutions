@@ -48,10 +48,10 @@ export default function Header({ nav, lang }: { nav: Translation['nav']; lang: L
         <div className="flex items-center justify-between h-[72px]">
           <Link href={base || '/'} className="flex items-center" aria-label={nav.homeAriaLabel}>
             <Image
-              src="/logo-figma.svg"
+              src="/logo.svg"
               alt="Metric Solutions"
-              width={64}
-              height={66}
+              width={304}
+              height={313}
               priority
               className="h-12 w-auto"
             />
