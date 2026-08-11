@@ -13,12 +13,20 @@ export default function Hero({ t, base }: { t: Translation['hero']; base: string
       {/* Технический фон из макета: подсвеченные ячейки сетки + тонкие дуги */}
       <TechBackdrop cells />
       {/* Анимация появления логотипа в правой части экрана (HeroVisual).
-          Блок декоративный — в шапке уже есть логотип со ссылкой и подписью. */}
+          Блок декоративный — в шапке уже есть логотип со ссылкой и подписью.
+
+          Левая граница колонки — calc(50% + 260px): текстовая колонка внутри
+          container-custom (max-w-7xl) начинается на 50% - 640px и самая длинная
+          строка заголовка занимает ~860px, то есть кончается около 50% + 220px.
+          260px даёт запас на английский заголовок. Дальше камень тянется до
+          правого края экрана (а не контейнера) и потому остаётся максимально
+          крупным из того, что реально помещается: фиксированная ширина на
+          1440px не влезала рядом с заголовком и наезжала на текст. */}
       <div
-        className="pointer-events-none absolute inset-y-0 left-1/2 hidden w-full max-w-7xl -translate-x-1/2 items-center justify-end px-4 sm:px-6 lg:px-8 xl:flex"
+        className="pointer-events-none absolute inset-y-0 left-[calc(50%+260px)] right-4 hidden items-center justify-end sm:right-6 lg:right-8 xl:flex"
         aria-hidden="true"
       >
-        <div className="relative">
+        <div className="relative w-full max-w-[765px]">
           <div className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-500/10 blur-[140px]" />
           <HeroVisual />
         </div>

@@ -65,7 +65,7 @@ export default function HeroVisual() {
         width={120}
         height={170}
         priority
-        className="relative h-auto w-[240px] drop-shadow-[0_0_70px_rgba(0,136,255,0.45)] 2xl:w-[280px]"
+        className="relative h-auto w-full drop-shadow-[0_0_70px_rgba(0,136,255,0.45)]"
       />
     );
   }
@@ -73,7 +73,7 @@ export default function HeroVisual() {
   return (
     <video
       ref={videoRef}
-      className="relative h-auto w-[300px] 2xl:w-[340px]"
+      className="relative h-auto w-full"
       autoPlay
       muted
       playsInline
