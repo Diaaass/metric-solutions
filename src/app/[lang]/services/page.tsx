@@ -53,14 +53,15 @@ export default function ServicesPage({ params }: Props) {
               style={{ animationDelay: `${(i + 1) * 80}ms` }}
             >
               {/* Камень из брендбука вместо линейной иконки: у каждого направления
-                  свой вариант логотипа. Синее свечение drop-shadow-icon намеренно
-                  не используем — оно перекрашивало бы цветной камень. */}
+                  свой вариант метки (SVG заказчика с текстурой минерала).
+                  Синее свечение drop-shadow-icon намеренно не используем —
+                  оно перекрашивало бы цветной камень. */}
               <Image
-                src={`/icon-service-${item.slug}.png`}
+                src={`/icon-service-${item.slug}.svg`}
                 alt=""
-                width={88}
-                height={88}
-                className="mb-5 h-[88px] w-[88px] transition-transform group-hover:-translate-y-0.5"
+                width={270}
+                height={285}
+                className="mb-5 h-[92px] w-auto transition-transform group-hover:-translate-y-0.5"
               />
               <h3 className="!text-xl mb-3 tracking-tight transition-colors group-hover:text-accent-300">
                 {item.title}

@@ -74,11 +74,11 @@ export default function ServiceDetailPage({ params }: Props) {
           <div className="flex items-start gap-5 mb-6 animate-fade-in-up">
             {/* Тот же камень направления, что и на карточке в списке услуг */}
             <Image
-              src={`/icon-service-${slug}.png`}
+              src={`/icon-service-${slug}.svg`}
               alt=""
-              width={64}
-              height={64}
-              className="mt-1 hidden h-16 w-16 shrink-0 sm:block"
+              width={270}
+              height={285}
+              className="mt-1 hidden h-16 w-auto shrink-0 sm:block"
             />
             <h1 className="!text-3xl md:!text-5xl">{card.title}</h1>
           </div>
