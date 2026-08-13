@@ -2,11 +2,18 @@
 
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import Input from '@/components/ui/Input';
 import { ContactFormData } from '@/types';
 import type { Translation } from '@/i18n';
 
-export default function ConsultationForm({ t }: { t: Translation['form'] }) {
+export default function ConsultationForm({
+  t,
+  privacyHref,
+}: {
+  t: Translation['form'];
+  privacyHref: string;
+}) {
   const [formData, setFormData] = useState<ContactFormData>({
     name: '',
     email: '',
@@ -15,6 +22,9 @@ export default function ConsultationForm({ t }: { t: Translation['form'] }) {
     message: '',
   });
   const [website, setWebsite] = useState('');
+  // Согласие на обработку персональных данных: без него заявка не уходит
+  // (required на чекбоксе + проверка на сервере).
+  const [consent, setConsent] = useState(false);
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -93,7 +103,7 @@ export default function ConsultationForm({ t }: { t: Translation['form'] }) {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, website, renderedAt }),
+        body: JSON.stringify({ ...formData, website, renderedAt, consent }),
       });
 
       const data = await res.json();
@@ -108,6 +118,7 @@ export default function ConsultationForm({ t }: { t: Translation['form'] }) {
 
       setIsSubmitted(true);
       setFormData({ name: '', email: '', phone: '', company: '', message: '' });
+      setConsent(false);
       setPhoneError(false);
     } catch {
       setError(t.errorConn);
@@ -256,6 +267,28 @@ export default function ConsultationForm({ t }: { t: Translation['form'] }) {
           />
         </div>
 
+        {/* Согласие на обработку персональных данных (Закон РК № 94-V):
+            явный чекбокс, обязательный для отправки; сервер проверяет тоже. */}
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            name="consent"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            required
+            className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer appearance-none rounded border border-white/30 bg-white/[0.04] transition-colors checked:border-accent-500 checked:bg-accent-500 checked:bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%2220%206%209%2017%204%2012%22%2F%3E%3C%2Fsvg%3E')] checked:bg-[length:14px] checked:bg-center checked:bg-no-repeat focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+          />
+          <span className="text-xs font-extralight text-white/70 leading-relaxed">
+            {t.consentPrefix}{' '}
+            <Link
+              href={privacyHref}
+              className="underline decoration-white/30 underline-offset-2 hover:text-accent-300 transition-colors"
+            >
+              {t.consentLinkLabel}
+            </Link>
+          </span>
+        </label>
+
         <button
           type="submit"
           disabled={isLoading}
@@ -263,8 +296,6 @@ export default function ConsultationForm({ t }: { t: Translation['form'] }) {
         >
           {isLoading ? t.submitting : t.submit}
         </button>
-
-        <p className="text-xs font-extralight text-white/60 text-center">{t.privacyNote}</p>
       </form>
 
       {mounted &&

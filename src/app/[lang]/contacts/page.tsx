@@ -19,6 +19,7 @@ export default function ContactsPage({ params }: Props) {
   if (!isLang(params.lang)) notFound();
   const dict = translations[params.lang];
   const t = dict.contactsPage;
+  const privacyHref = params.lang === 'en' ? '/en/privacy' : '/privacy';
 
   const cards: Array<{ Icon: LucideIcon; label: string; content: React.ReactNode }> = [
     {
@@ -77,7 +78,7 @@ export default function ContactsPage({ params }: Props) {
         <div className="relative pt-10 pb-6 animate-fade-in-up delay-200">
           <p className="eyebrow mb-8">{t.formTitle}</p>
           <div className="max-w-4xl">
-            <ConsultationForm t={dict.form} />
+            <ConsultationForm t={dict.form} privacyHref={privacyHref} />
           </div>
         </div>
 

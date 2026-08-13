@@ -92,7 +92,7 @@ export default function HeroVisual() {
         src="/logo-crystal.png"
         alt=""
         width={720}
-        height={782}
+        height={802}
         priority
         className="relative h-auto w-full"
       />

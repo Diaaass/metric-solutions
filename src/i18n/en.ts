@@ -62,6 +62,16 @@ const en: Translation = {
   gallery: {
     title: 'Our laboratories and projects',
     text: 'Research, pilot campaigns and work at client sites: laboratory equipment, processing circuits and the plants where we implement our solutions. Photos of Metric Solutions projects and equipment.',
+    prevLabel: 'Previous photos',
+    nextLabel: 'Next photos',
+    alts: [
+      'Specialists at work in a chemical laboratory',
+      'Laboratory setup with glass condensers',
+      'Heavy machinery in an open-pit mine',
+      'Processing site: conveyors and machinery from above',
+      'Haul truck at a mining site',
+      'Laboratory glassware for analytical studies',
+    ],
   },
 
   ctaBanner: {
@@ -76,6 +86,7 @@ const en: Translation = {
     contactsTitle: 'Contact',
     caption: 'Metric Solutions, 2026',
     services: ['Geometallurgy', 'Mineral processing', 'Hydrometallurgy'],
+    privacyLabel: 'Privacy policy',
   },
 
   aboutPage: {
@@ -272,7 +283,8 @@ const en: Translation = {
     close: 'Close',
     errorConn: 'Could not send your request. Please check your connection.',
     errorPhone: 'Enter the number as +7 (XXX) XXX XXXX',
-    privacyNote: 'By clicking the button you agree to the privacy policy',
+    consentPrefix: 'I consent to the processing of my personal data in accordance with the',
+    consentLinkLabel: 'privacy policy',
     errors: {
       request: 'Invalid request. Refresh the page and try again.',
       required: 'Please fill in the required fields',
@@ -281,7 +293,73 @@ const en: Translation = {
       rate: 'Too many requests. Please try again later.',
       send: 'Failed to send. Please try again later.',
       long: 'Message is too long (5,000 characters max)',
+      consent: 'Consent to personal data processing is required to send the request',
     },
+  },
+
+  privacyPage: {
+    breadcrumb: 'Home / Privacy policy',
+    title: 'Privacy Policy',
+    updatedAt: 'Last updated: August 13, 2026',
+    intro:
+      'This policy describes what personal data Metric Solutions (the "Operator") processes through this website, for what purposes, and how it is protected. The policy follows the Law of the Republic of Kazakhstan No. 94-V "On Personal Data and Their Protection" dated May 21, 2013.',
+    sections: [
+      {
+        title: '1. What data we process',
+        paragraphs: [
+          'Through the request form the Operator receives: name, email address, phone number, company name (optional) and the message text.',
+          "To protect the form from automated submissions, the sender's IP address is processed briefly. It is used only for rate limiting, is not stored in databases and is not linked to the content of the request.",
+          'The website does not use tracking cookies and does not embed third-party analytics or advertising systems.',
+        ],
+      },
+      {
+        title: '2. Purposes of processing',
+        paragraphs: [
+          'Data is processed solely to review the enquiry and respond to it: preparing a reply, clarifying the details of the task, sending a commercial proposal.',
+          'Data is not used for mailing lists, is not sold and is not shared with third parties for marketing purposes.',
+        ],
+      },
+      {
+        title: '3. Legal basis',
+        paragraphs: [
+          "Processing is based on the data subject's consent, given by ticking the checkbox in the request form before submitting it. Without consent the request is not accepted.",
+        ],
+      },
+      {
+        title: '4. Who has access to the data',
+        paragraphs: [
+          'Only authorized employees of the Operator have access to requests.',
+          'The website infrastructure is provided by: hosting provider Vercel Inc. (USA) — processing the request when the form is submitted, and Google LLC (Gmail) — delivery and storage of the request email. Data is transferred to these providers over encrypted channels; the transfer is cross-border and the providers protect data under their own security policies.',
+          'Data may be disclosed to state authorities only in cases directly required by the legislation of the Republic of Kazakhstan.',
+        ],
+      },
+      {
+        title: '5. Retention',
+        paragraphs: [
+          "A request is kept in the Operator's mailbox until the purposes of processing are achieved — the communication on the enquiry is completed — or until the data subject withdraws consent, whichever comes first.",
+        ],
+      },
+      {
+        title: '6. How data is protected',
+        paragraphs: [
+          'Data between the browser and the website is transferred over HTTPS (TLS). Request content is validated and escaped on the server; rate limiting and anti-bot protection are applied.',
+          'The Operator applies organizational measures restricting access to the data and does not store it in publicly accessible systems.',
+        ],
+      },
+      {
+        title: '7. Data subject rights',
+        paragraphs: [
+          'You may request information about the processing of your data, demand its correction or deletion, and withdraw your consent at any time.',
+          'To exercise these rights, send a request to Support@metricsolutions.kz from the email address specified in your enquiry. Requests are handled within the time limits set by the legislation of the Republic of Kazakhstan.',
+        ],
+      },
+      {
+        title: '8. Changes to this policy',
+        paragraphs: [
+          'The Operator may update this policy; the current version is always published on this page with its date. Questions about personal data processing: Support@metricsolutions.kz.',
+        ],
+      },
+    ],
   },
 
   metals: {
@@ -325,6 +403,11 @@ const en: Translation = {
       title: 'Contact — Metric Solutions',
       description:
         'Contact Metric Solutions to discuss your process challenge or project: office in Astana, email, phone and a consultation request form.',
+    },
+    privacy: {
+      title: 'Privacy Policy — Metric Solutions',
+      description:
+        'Metric Solutions personal data processing policy: what data the request form collects, why, how it is protected and how to withdraw consent.',
     },
   },
 

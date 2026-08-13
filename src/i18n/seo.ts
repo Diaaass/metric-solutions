@@ -21,6 +21,7 @@ export const SEO_PATHS = {
   services: '/services',
   solutions: '/solutions',
   contacts: '/contacts',
+  privacy: '/privacy',
 } as const;
 
 export type SeoPage = keyof typeof SEO_PATHS;

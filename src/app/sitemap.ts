@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/services',
     '/solutions',
     '/contacts',
+    '/privacy',
     ...SERVICE_SLUGS.map((slug) => `/services/${slug}`),
   ];
 

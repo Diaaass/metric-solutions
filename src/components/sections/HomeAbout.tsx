@@ -34,16 +34,18 @@ export default function HomeAbout({ t }: { t: Translation['homeAbout'] }) {
               return (
                 <div
                   key={i}
-                  className="card !p-4 flex flex-col items-center text-center min-h-[270px]"
+                  className="card !p-5 sm:!p-4 flex flex-col items-center text-center sm:min-h-[270px]"
                 >
                   <Icon
-                    className="h-7 w-7 text-accent-400 drop-shadow-icon mt-2 mb-5"
+                    className="h-9 w-9 sm:h-7 sm:w-7 text-accent-400 drop-shadow-icon mt-2 mb-5"
                     strokeWidth={1.7}
                   />
-                  <h3 className="!text-[13px] font-medium tracking-wide mb-4 leading-tight">
+                  {/* Ниже sm карточки во всю ширину — 13px/12px из макета там
+                      нечитабельны, поднимаем до base/sm. */}
+                  <h3 className="!text-base sm:!text-[13px] font-medium tracking-wide mb-3 sm:mb-4 leading-tight">
                     {card.title}
                   </h3>
-                  <p className="text-xs font-extralight text-white/90 leading-relaxed tracking-wide">
+                  <p className="text-sm sm:text-xs font-extralight text-white/90 leading-relaxed tracking-wide">
                     {card.text}
                   </p>
                 </div>

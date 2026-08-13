@@ -82,7 +82,16 @@ type Payload = {
  * языка страницы, а зашитые здесь русские строки показывались бы и на /en.
  * Локализация — в словарях (form.errors), сопоставление по коду — на клиенте.
  */
-type ErrorCode = 'request' | 'required' | 'email' | 'phone' | 'long' | 'rate' | 'send' | 'spam';
+type ErrorCode =
+  | 'request'
+  | 'required'
+  | 'email'
+  | 'phone'
+  | 'long'
+  | 'consent'
+  | 'rate'
+  | 'send'
+  | 'spam';
 
 type ValidationResult =
   | { ok: true; data: Payload; suspicious: boolean }
@@ -125,6 +134,10 @@ function validate(body: unknown): ValidationResult {
   if (message.length > MAX_MESSAGE_LENGTH) return { ok: false, code: 'long' };
   if (!EMAIL_RE.test(email)) return { ok: false, code: 'email' };
   if (!PHONE_DIGITS_RE.test(phone.replace(/\D/g, ''))) return { ok: false, code: 'phone' };
+
+  // Согласие на обработку ПДн обязательно (Закон РК № 94-V): чекбокс на
+  // клиенте — required, но клиенту не доверяем и проверяем здесь тоже.
+  if (b.consent !== true) return { ok: false, code: 'consent' };
 
   // Жёсткий сигнал: honeypot заполняют только боты (поле скрыто от людей).
   if (website) return { ok: false, code: 'spam' };

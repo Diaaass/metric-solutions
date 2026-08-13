@@ -51,7 +51,7 @@ export default function TickerBar({
           как «срезанная» вёрстка. Перенос ничего не прячет.
           relative обязателен: иначе абсолютные .sr-only не обрезаются контейнером
           и растягивают горизонтальный скролл всей страницы. */}
-      <div className="relative mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-0.5 overflow-x-visible whitespace-nowrap px-4 py-2 text-xs sm:px-6 md:h-10 md:flex-nowrap md:justify-between md:gap-5 md:overflow-x-auto md:py-0 lg:px-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="relative mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-6 gap-y-1 overflow-x-visible whitespace-nowrap px-4 py-2 text-xs sm:px-6 md:h-10 md:flex-nowrap md:justify-between md:gap-5 md:overflow-x-auto md:py-0 lg:px-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {data.metals.map((m) => (
           <React.Fragment key={m.key}>
             {/* Разделители не нужны: от md котировки разнесены justify-between,

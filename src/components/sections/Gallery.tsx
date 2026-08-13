@@ -1,39 +1,84 @@
-import React from 'react';
+'use client';
+
+import React, { useRef } from 'react';
 import Image from 'next/image';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Container from '@/components/ui/Container';
 import type { Translation } from '@/i18n';
 
 /**
- * Галерея на главной: 4 изображения + описание под ними.
- * Файлы названы предсказуемо (gallery-1…4.webp) — временные картинки заменяются
- * на реальные фото лабораторий и производств без правки кода.
+ * Карусель галереи на главной. Файлы названы предсказуемо (gallery-N.jpg) —
+ * временные фото заменяются на реальные снимки заказчика без правки кода.
+ * Формат jpg: webp-кодировщика в пайплайне нет, а next/image на Vercel всё
+ * равно отдаёт браузеру webp/avif через оптимизатор.
  */
-const IMAGES = ['/gallery-1.webp', '/gallery-2.webp', '/gallery-3.webp', '/gallery-4.webp'];
+const IMAGES = [
+  '/gallery-1.jpg',
+  '/gallery-2.jpg',
+  '/gallery-3.jpg',
+  '/gallery-4.jpg',
+  '/gallery-5.jpg',
+  '/gallery-6.jpg',
+];
 
 export default function Gallery({ t }: { t: Translation['gallery'] }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  // Прокрутка ровно на «страницу» — ширину видимой области (2 слайда от sm,
+  // 1 на мобильном). scroll-snap сам довыравнивает по границе слайда.
+  const scrollByPage = (dir: 1 | -1) => {
+    const track = trackRef.current;
+    if (!track) return;
+    track.scrollBy({ left: dir * track.clientWidth, behavior: 'smooth' });
+  };
+
   return (
     <section className="relative overflow-hidden bg-ink-950 section-padding">
       <div className="absolute inset-0 bg-grid-dark" aria-hidden="true" />
 
       <Container>
         <div className="relative">
-          <h2 className="max-w-2xl mb-10 animate-fade-in">{t.title}</h2>
+          <div className="flex items-end justify-between gap-6 mb-10">
+            <h2 className="max-w-2xl animate-fade-in">{t.title}</h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Кнопки листания; на мобильном остаётся свайп со snap */}
+            <div className="hidden sm:flex items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => scrollByPage(-1)}
+                aria-label={t.prevLabel}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-white/80 transition-colors hover:border-accent-500/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+              >
+                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollByPage(1)}
+                aria-label={t.nextLabel}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/[0.03] text-white/80 transition-colors hover:border-accent-500/70 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+              >
+                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          <div
+            ref={trackRef}
+            className="flex gap-6 overflow-x-auto snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             {IMAGES.map((src, i) => (
               <div
                 key={src}
-                className="overflow-hidden rounded-2xl border border-white/10 animate-fade-in-up"
-                style={{ animationDelay: `${(i + 1) * 80}ms` }}
+                className="relative shrink-0 snap-start basis-full sm:basis-[calc(50%-12px)] overflow-hidden rounded-2xl border border-white/10 animate-fade-in-up"
+                style={{ animationDelay: `${(i + 1) * 60}ms` }}
               >
-                {/* width/height заданы явно — без сдвига вёрстки при загрузке */}
                 <Image
                   src={src}
-                  alt=""
-                  width={800}
-                  height={600}
-                  sizes="(min-width: 1024px) 288px, (min-width: 640px) 50vw, 100vw"
-                  className="h-auto w-full"
+                  alt={t.alts[i] ?? ''}
+                  width={1400}
+                  height={933}
+                  sizes="(min-width: 640px) 50vw, 100vw"
+                  className="h-[300px] w-full object-cover sm:h-[380px] lg:h-[460px]"
                 />
               </div>
             ))}

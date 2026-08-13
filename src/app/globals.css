@@ -15,6 +15,16 @@
     @apply bg-ink-950 text-white font-sans antialiased;
   }
 
+  /* WebKit на iOS обрезает filter: drop-shadow по границе фильтр-региона:
+     многослойное свечение иконок (до 18.9px блюра) превращается в квадратное
+     гало с резкими краями. Регион расширить нельзя, поэтому на тач-WebKit
+     свечение у иконок отключаем — чистая иконка вместо артефакта. */
+  @supports (-webkit-touch-callout: none) {
+    .drop-shadow-icon {
+      filter: none;
+    }
+  }
+
   /* Дисплейные заголовки (hero, «КОНТАКТЫ», «NOMADLAB…») — капс */
   h1 {
     @apply font-display font-bold uppercase text-white text-5xl md:text-6xl lg:text-[88px];

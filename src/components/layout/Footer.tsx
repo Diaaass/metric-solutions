@@ -98,6 +98,14 @@ export default function Footer({
                   </a>
                 </li>
                 <li className="max-w-[220px]">{address}</li>
+                <li>
+                  <Link
+                    href={`${base}/privacy`}
+                    className="text-sm text-white/60 hover:text-accent-300 transition-colors"
+                  >
+                    {footer.privacyLabel}
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>

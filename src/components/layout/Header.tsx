@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -18,6 +18,12 @@ function stripLocale(pathname: string): string {
 export default function Header({ nav, lang }: { nav: Translation['nav']; lang: Lang }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const pathname = usePathname();
+
+  // Header живёт в layout и переживает навигацию — меню обязано закрываться
+  // при любой смене маршрута (включая переходы не из меню: футер, крошки).
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname]);
 
   // «Голый» путь без префикса — общий и для активной ссылки, и для переключателя языка.
   const bare = stripLocale(pathname);
@@ -53,7 +59,7 @@ export default function Header({ nav, lang }: { nav: Translation['nav']; lang: L
               width={304}
               height={313}
               priority
-              className="h-12 w-auto"
+              className="h-[67px] w-auto"
             />
           </Link>
 

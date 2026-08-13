@@ -51,10 +51,15 @@ export interface Translation {
     btn: string;
   };
 
-  /** Галерея на главной: 4 изображения + описание под ними */
+  /** Галерея на главной: карусель фотографий + описание под ней */
   gallery: {
     title: string;
     text: string;
+    /** aria-label кнопок листания */
+    prevLabel: string;
+    nextLabel: string;
+    /** alt-тексты слайдов (по порядку файлов gallery-N.jpg) */
+    alts: string[];
   };
 
   /** Баннер «Готовы обсудить ваш проект?» */
@@ -70,6 +75,8 @@ export interface Translation {
     contactsTitle: string;
     caption: string;
     services: string[];
+    /** Ссылка на политику конфиденциальности */
+    privacyLabel: string;
   };
 
   aboutPage: {
@@ -156,7 +163,10 @@ export interface Translation {
     close: string;
     errorConn: string;
     errorPhone: string;
-    privacyNote: string;
+    /** Текст согласия на обработку ПДн перед ссылкой на политику */
+    consentPrefix: string;
+    /** Текст самой ссылки на политику конфиденциальности */
+    consentLinkLabel: string;
     /**
      * Ошибки, пришедшие с сервера. /api/contact отдаёт машинный код, а текст
      * берётся отсюда: иначе на английской странице показывались бы русские
@@ -177,6 +187,8 @@ export interface Translation {
       send: string;
       /** Сообщение длиннее допустимого лимита */
       long: string;
+      /** Не дано согласие на обработку персональных данных */
+      consent: string;
     };
   };
 
@@ -209,12 +221,23 @@ export interface Translation {
     ariaLabel: string;
   };
 
-  /** SEO-метаданные по страницам (title + description на каждую из 5 страниц) */
+  /** Политика конфиденциальности (/privacy) */
+  privacyPage: {
+    breadcrumb: string;
+    title: string;
+    /** Дата редакции, показывается под заголовком */
+    updatedAt: string;
+    intro: string;
+    sections: Array<{ title: string; paragraphs: string[] }>;
+  };
+
+  /** SEO-метаданные по страницам (title + description на каждую) */
   seo: {
     home: { title: string; description: string };
     about: { title: string; description: string };
     services: { title: string; description: string };
     solutions: { title: string; description: string };
     contacts: { title: string; description: string };
+    privacy: { title: string; description: string };
   };
 }
