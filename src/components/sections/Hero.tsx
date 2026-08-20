@@ -59,7 +59,7 @@ export default function Hero({ t, base }: { t: Translation['hero']; base: string
                 className="h-8 w-8 shrink-0 self-center text-accent-400 drop-shadow-icon"
                 aria-hidden="true"
               />
-              <span className="font-display text-7xl font-bold leading-none text-white">
+              <span className="font-display text-7xl font-normal leading-none text-white">
                 {t.stat1Value}
               </span>
               <span className="text-sm font-extralight text-white leading-snug pt-2">

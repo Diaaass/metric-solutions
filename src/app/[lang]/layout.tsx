@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { Oswald, Geologica, Montserrat } from 'next/font/google';
+import { Geologica, Montserrat } from 'next/font/google';
+import localFont from 'next/font/local';
 import '../globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -11,12 +12,24 @@ import type { Lang } from '@/i18n';
 import { buildOrgJsonLd, isLang, SITE_URL } from '@/i18n/seo';
 import { getMetals } from '@/lib/metals';
 
-// Узкий гротеск-капс с кириллицей — дисплейные заголовки (аналог Bebas Neue из макета)
-const oswald = Oswald({
-  weight: ['400', '500', '600', '700'],
-  subsets: ['latin', 'cyrillic'],
+/**
+ * Дисплейные заголовки — Bebas Neue Cyrillic (файл заказчика).
+ * Официальный Bebas Neue кириллицы не содержит вовсе, поэтому берём
+ * кириллическую адаптацию и раздаём локально: подмножество latin+cyrillic
+ * в woff2 — 16 КБ вместо 72 КБ исходного ttf.
+ *
+ * Начертание одно (Regular). adjustFontFallback отключён: Next по умолчанию
+ * подбирает метрики системного фолбэка, а у сверхузкого капса подстановка
+ * даёт заметный скачок ширины при подмене.
+ */
+const bebas = localFont({
+  src: '../../fonts/bebas-neue-cyrillic.woff2',
   variable: '--font-display',
   display: 'swap',
+  weight: '400',
+  style: 'normal',
+  adjustFontFallback: false,
+  fallback: ['Oswald', 'Arial Narrow', 'sans-serif'],
 });
 
 // Основной текст (Geologica из макета)
@@ -63,7 +76,7 @@ export default async function LangLayout({
 
   return (
     <html lang={HTML_LANG[lang]}>
-      <body className={`${oswald.variable} ${geologica.variable} ${montserrat.variable} font-sans`}>
+      <body className={`${bebas.variable} ${geologica.variable} ${montserrat.variable} font-sans`}>
         {/* JSON-LD Organization: собирается из констант, ввода пользователя нет */}
         <script
           type="application/ld+json"

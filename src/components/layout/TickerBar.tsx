@@ -59,7 +59,7 @@ export default function TickerBar({
                 flex-элементом и разъехалась бы вместе с ценами. */}
             <span className="flex shrink-0 items-baseline gap-1.5" title={t.names[m.key]}>
               <span
-                className="font-display text-sm font-semibold tracking-wide text-accent-300"
+                className="font-display text-sm font-normal tracking-wide text-accent-300"
                 aria-hidden="true"
               >
                 {SYMBOLS[m.key]}
